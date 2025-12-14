@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>まるばつゲーム</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        h1 {
+            color: white;
+            margin-bottom: 20px;
+        }
+        
+        #game-info {
+            color: white;
+            font-size: 24px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        
+        #board {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-template-rows: repeat(3, 100px);
+            gap: 5px;
+            background-color: #333;
+            padding: 5px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .cell {
+            background-color: white;
+            border: none;
+            font-size: 48px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            border-radius: 5px;
+        }
+        
+        .cell:hover:not(:disabled) {
+            background-color: #f0f0f0;
+        }
+        
+        .cell:disabled {
+            cursor: not-allowed;
+        }
+        
+        .cell.x {
+            color: #667eea;
+        }
+        
+        .cell.o {
+            color: #764ba2;
+        }
+        
+        #reset-btn {
+            margin-top: 20px;
+            padding: 12px 30px;
+            font-size: 18px;
+            background-color: white;
+            color: #667eea;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        #reset-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 7px 20px rgba(0,0,0,0.3);
+        }
+        
+        #reset-btn:active {
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <h1>まるばつゲーム</h1>
+    <div id="game-info">プレイヤー: ○</div>
+    <div id="board"></div>
+    <button id="reset-btn">リセット</button>
+
+    <script>
+        const board = document.getElementById('board');
+        const gameInfo = document.getElementById('game-info');
+        const resetBtn = document.getElementById('reset-btn');
+        
+        let currentPlayer = 'O';
+        let gameState = ['', '', '', '', '', '', '', '', ''];
+        let gameActive = true;
+        
+        const winningConditions = [
+            [0, 1, 2],
+            [3, 4, 5],
+            [6, 7, 8],
+            [0, 3, 6],
+            [1, 4, 7],
+            [2, 5, 8],
+            [0, 4, 8],
+            [2, 4, 6]
+        ];
+        
+        // ボードの初期化
+        function initBoard() {
+            board.innerHTML = '';
+            for (let i = 0; i < 9; i++) {
+                const cell = document.createElement('button');
+                cell.classList.add('cell');
+                cell.dataset.index = i;
+                cell.addEventListener('click', handleCellClick);
+                board.appendChild(cell);
+            }
+        }
+        
+        // セルクリック処理
+        function handleCellClick(e) {
+            const cell = e.target;
+            const index = cell.dataset.index;
+            
+            if (gameState[index] !== '' || !gameActive) {
+                return;
+            }
+            
+            gameState[index] = currentPlayer;
+            cell.textContent = currentPlayer;
+            cell.classList.add(currentPlayer.toLowerCase());
+            cell.disabled = true;
+            
+            checkResult();
+        }
+        
+        // 勝敗判定
+        function checkResult() {
+            let roundWon = false;
+            
+            for (let condition of winningConditions) {
+                const [a, b, c] = condition;
+                if (gameState[a] && gameState[a] === gameState[b] && gameState[a] === gameState[c]) {
+                    roundWon = true;
+                    break;
+                }
+            }
+            
+            if (roundWon) {
+                gameInfo.textContent = `プレイヤー ${currentPlayer} の勝ち！`;
+                gameActive = false;
+                return;
+            }
+            
+            if (!gameState.includes('')) {
+                gameInfo.textContent = '引き分け！';
+                gameActive = false;
+                return;
+            }
+            
+            // プレイヤー交代
+            currentPlayer = currentPlayer === 'O' ? 'X' : 'O';
+            gameInfo.textContent = `プレイヤー: ${currentPlayer}`;
+        }
+        
+        // リセット
+        function resetGame() {
+            currentPlayer = 'O';
+            gameState = ['', '', '', '', '', '', '', '', ''];
+            gameActive = true;
+            gameInfo.textContent = 'プレイヤー: ○';
+            initBoard();
+        }
+        
+        resetBtn.addEventListener('click', resetGame);
+        
+        // ゲーム開始
+        initBoard();
+    </script>
+</body>
+</html>
