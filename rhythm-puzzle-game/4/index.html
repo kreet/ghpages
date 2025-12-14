@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>リズムダンジョン</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: white;
+        }
+
+        .game-container {
+            text-align: center;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 50px rgba(0, 0, 0, 0.7);
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .info {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            font-size: 1.2em;
+            gap: 20px;
+        }
+
+        .info div {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px 20px;
+            border-radius: 10px;
+            min-width: 100px;
+        }
+
+        .hp-bar-container {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 5px 15px;
+            min-width: 150px;
+        }
+
+        .hp-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            margin-top: 5px;
+            overflow: hidden;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .hp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #e74c3c, #f39c12, #27ae60);
+            transition: width 0.3s;
+            border-radius: 8px;
+        }
+
+        #game-canvas {
+            background: #0f0f1e;
+            border-radius: 10px;
+            display: block;
+            margin: 0 auto;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+            border: 3px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+        }
+
+        .instructions {
+            margin-top: 20px;
+            font-size: 0.9em;
+            opacity: 0.9;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .message {
+            min-height: 30px;
+            font-size: 1.3em;
+            font-weight: bold;
+            margin: 10px 0;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+        }
+
+        .message.perfect {
+            color: #feca57;
+        }
+
+        .message.good {
+            color: #4cd137;
+        }
+
+        .message.miss {
+            color: #ff6b6b;
+        }
+
+        .game-over {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            padding: 40px;
+            border-radius: 20px;
+            display: none;
+            z-index: 100;
+            border: 3px solid #feca57;
+        }
+
+        .game-over.show {
+            display: block;
+        }
+
+        .game-over button {
+            margin-top: 20px;
+            padding: 15px 30px;
+            font-size: 1.2em;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .game-over button:hover {
+            transform: scale(1.1);
+        }
+
+        .legend {
+            margin-top: 15px;
+            font-size: 0.85em;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        .rhythm-info {
+            font-size: 0.9em;
+            margin-bottom: 15px;
+            color: #feca57;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>🎵 リズムダンジョン 🏰</h1>
+        
+        <div class="info">
+            <div>フロア: <span id="floor">1</span></div>
+            <div>💎 宝石: <span id="gems">0</span></div>
+            <div>🔑 鍵: <span id="keys">0</span></div>
+            <div class="hp-bar-container">
+                HP
+                <div class="hp-bar">
+                    <div class="hp-fill" id="hp-fill" style="width: 100%"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="message" id="message"></div>
+        <div class="rhythm-info">リズムに乗って移動しよう！ミスするとダメージを受けます</div>
+
+        <canvas id="game-canvas" width="480" height="480"></canvas>
+
+        <div class="instructions">
+            <p><strong>⬆️⬇️⬅️➡️ 矢印キーで移動</strong></p>
+            <p>キャラの周りの<span style="color: #4cd137">緑のリング</span>が点滅したタイミングで移動すると成功！</p>
+            <p>🚪 = ゴール / 🔒 = 鍵が必要 / 📦 = 押せる箱 / 💎 = 宝石</p>
+        </div>
+
+        <div class="legend">
+            <p>🧙 = あなた / 🧱 = 壁 / ⭕ = 床スイッチ</p>
+            <p>⚡ PERFECT: ボーナス / ✓ GOOD: 成功 / ✗ MISS: ダメージ</p>
+        </div>
+    </div>
+
+    <div class="game-over" id="game-over">
+        <h2 id="game-over-title">ゲームオーバー</h2>
+        <p id="game-over-message"></p>
+        <p>到達フロア: <span id="final-floor">0</span></p>
+        <p>獲得宝石: <span id="final-gems">0</span></p>
+        <button onclick="restartGame()">もう一度プレイ</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        const TILE_SIZE = 48;
+        const GRID_SIZE = 10;
+
+        // ゲーム状態
+        let player = { x: 1, y: 1 };
+        let floor = 1;
+        let gems = 0;
+        let keys = 0;
+        let hp = 100;
+        let maxHp = 100;
+        let gameOver = false;
+        let grid = [];
+        let boxes = [];
+        let switches = [];
+        let lockedDoors = [];
+        let animationFrameId = null;
+        let messageTimeout = null;
+        
+        // リズム関連
+        let beatPhase = 0;
+        let lastMoveTime = 0;
+        let moveDelay = 100;
+
+        // タイル種類
+        const TILE = {
+            EMPTY: 0,
+            WALL: 1,
+            FLOOR: 2,
+            GOAL: 3,
+            GEM: 4,
+            KEY: 5,
+            LOCKED_DOOR: 6,
+            SWITCH: 7,
+            BOX: 8
+        };
+
+        // レベルデザイン
+        const levels = [
+            // レベル1: 基本
+            [
+                [1,1,1,1,1,1,1,1,1,1],
+                [1,2,2,2,1,2,2,2,2,1],
+                [1,2,1,2,1,2,1,1,2,1],
+                [1,2,1,4,2,2,2,1,2,1],
+                [1,2,1,1,1,1,2,1,2,1],
+                [1,2,2,2,2,2,2,1,2,1],
+                [1,1,1,2,1,1,1,1,2,1],
+                [1,4,2,2,2,2,2,2,2,1],
+                [1,2,1,1,1,1,1,1,3,1],
+                [1,1,1,1,1,1,1,1,1,1]
+            ],
+            // レベル2: 鍵とドア
+            [
+                [1,1,1,1,1,1,1,1,1,1],
+                [1,2,2,2,1,4,2,2,2,1],
+                [1,2,1,2,1,1,1,1,2,1],
+                [1,2,1,2,2,2,2,1,2,1],
+                [1,5,1,1,6,1,2,1,2,1],
+                [1,2,2,2,2,1,2,2,2,1],
+                [1,1,1,1,2,1,1,1,2,1],
+                [1,4,2,2,2,2,2,2,2,1],
+                [1,2,1,1,1,1,1,1,3,1],
+                [1,1,1,1,1,1,1,1,1,1]
+            ],
+            // レベル3: 箱パズル
+            [
+                [1,1,1,1,1,1,1,1,1,1],
+                [1,2,2,2,2,2,2,4,2,1],
+                [1,2,1,1,1,1,1,1,2,1],
+                [1,2,1,7,2,8,2,1,2,1],
+                [1,2,1,2,1,1,2,1,2,1],
+                [1,2,1,2,2,2,2,1,2,1],
+                [1,2,1,1,1,1,1,1,2,1],
+                [1,4,2,2,2,2,2,2,2,1],
+                [1,2,2,2,2,2,2,2,3,1],
+                [1,1,1,1,1,1,1,1,1,1]
+            ],
+            // レベル4: 複雑なパズル
+            [
+                [1,1,1,1,1,1,1,1,1,1],
+                [1,2,2,5,1,8,2,7,2,1],
+                [1,2,1,1,1,1,1,1,2,1],
+                [1,2,1,4,2,2,2,1,2,1],
+                [1,2,6,2,1,1,2,1,2,1],
+                [1,2,1,2,1,8,2,7,2,1],
+                [1,2,1,2,1,1,1,1,2,1],
+                [1,4,1,2,2,2,2,2,2,1],
+                [1,2,2,2,1,1,1,1,3,1],
+                [1,1,1,1,1,1,1,1,1,1]
+            ],
+            // レベル5: 最終ステージ
+            [
+                [1,1,1,1,1,1,1,1,1,1],
+                [1,2,5,2,1,8,2,7,4,1],
+                [1,2,1,2,1,1,1,1,2,1],
+                [1,2,1,2,2,2,2,8,2,1],
+                [1,2,1,1,6,1,1,1,2,1],
+                [1,2,2,2,2,2,2,7,2,1],
+                [1,1,1,1,2,1,1,1,2,1],
+                [1,4,2,2,2,2,2,2,2,1],
+                [1,2,1,1,1,1,1,2,3,1],
+                [1,1,1,1,1,1,1,1,1,1]
+            ]
+        ];
+
+        // レベル初期化
+        function initLevel() {
+            if (floor > levels.length) {
+                endGame(true);
+                return;
+            }
+
+            grid = JSON.parse(JSON.stringify(levels[floor - 1]));
+            boxes = [];
+            switches = [];
+            lockedDoors = [];
+            player = { x: 1, y: 1 };
+
+            // 特殊タイルを配列に保存
+            for (let y = 0; y < GRID_SIZE; y++) {
+                for (let x = 0; x < GRID_SIZE; x++) {
+                    if (grid[y][x] === TILE.BOX) {
+                        boxes.push({ x, y });
+                        grid[y][x] = TILE.FLOOR;
+                    } else if (grid[y][x] === TILE.SWITCH) {
+                        switches.push({ x, y, active: false });
+                        grid[y][x] = TILE.FLOOR;
+                    } else if (grid[y][x] === TILE.LOCKED_DOOR) {
+                        lockedDoors.push({ x, y });
+                    }
+                }
+            }
+        }
+
+        // タイル描画
+        function drawTile(x, y, type) {
+            const px = x * TILE_SIZE;
+            const py = y * TILE_SIZE;
+
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+
+            // グリッド線
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.strokeRect(px, py, TILE_SIZE, TILE_SIZE);
+
+            ctx.font = '32px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            switch(type) {
+                case TILE.WALL:
+                    ctx.fillStyle = '#34495e';
+                    ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+                    ctx.fillText('🧱', px + TILE_SIZE/2, py + TILE_SIZE/2);
+                    break;
+                case TILE.FLOOR:
+                    ctx.fillStyle = '#2c3e50';
+                    ctx.fillRect(px + 4, py + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+                    break;
+                case TILE.GOAL:
+                    ctx.fillStyle = '#27ae60';
+                    ctx.fillRect(px + 4, py + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+                    ctx.fillText('🚪', px + TILE_SIZE/2, py + TILE_SIZE/2);
+                    break;
+                case TILE.GEM:
+                    ctx.fillStyle = '#2c3e50';
+                    ctx.fillRect(px + 4, py + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+                    ctx.fillText('💎', px + TILE_SIZE/2, py + TILE_SIZE/2);
+                    break;
+                case TILE.KEY:
+                    ctx.fillStyle = '#2c3e50';
+                    ctx.fillRect(px + 4, py + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+                    ctx.fillText('🔑', px + TILE_SIZE/2, py + TILE_SIZE/2);
+                    break;
+                case TILE.LOCKED_DOOR:
+                    ctx.fillStyle = '#e74c3c';
+                    ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+                    ctx.fillText('🔒', px + TILE_SIZE/2, py + TILE_SIZE/2);
+                    break;
+            }
+        }
+
+        // リズムインジケーター描画
+        function drawRhythmIndicator() {
+            const px = player.x * TILE_SIZE + TILE_SIZE / 2;
+            const py = player.y * TILE_SIZE + TILE_SIZE / 2;
+            
+            const inBeatZone = (beatPhase > 0.8 || beatPhase < 0.2);
+            
+            // 外側のリング
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(px, py, 30, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // リズムリング
+            if (inBeatZone) {
+                const alpha = beatPhase > 0.8 ? (1 - (beatPhase - 0.8) / 0.2) : (1 - beatPhase / 0.2);
+                ctx.strokeStyle = `rgba(76, 209, 55, ${alpha})`;
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.arc(px, py, 30 + (1 - alpha) * 10, 0, Math.PI * 2);
+                ctx.stroke();
+                
+                ctx.fillStyle = `rgba(76, 209, 55, ${alpha * 0.3})`;
+                ctx.beginPath();
+                ctx.arc(px, py, 30, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // パルスライン
+            ctx.strokeStyle = 'rgba(254, 202, 87, 0.8)';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            const angle = beatPhase * Math.PI * 2 - Math.PI / 2;
+            ctx.moveTo(px, py);
+            ctx.lineTo(
+                px + Math.cos(angle) * 30,
+                py + Math.sin(angle) * 30
+            );
+            ctx.stroke();
+        }
+
+        // 描画
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#0f0f1e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // グリッド描画
+            for (let y = 0; y < GRID_SIZE; y++) {
+                for (let x = 0; x < GRID_SIZE; x++) {
+                    drawTile(x, y, grid[y][x]);
+                }
+            }
+
+            // スイッチ描画
+            ctx.font = '28px Arial';
+            for (let sw of switches) {
+                const px = sw.x * TILE_SIZE;
+                const py = sw.y * TILE_SIZE;
+                ctx.fillStyle = sw.active ? '#27ae60' : '#95a5a6';
+                ctx.fillRect(px + 8, py + 8, TILE_SIZE - 16, TILE_SIZE - 16);
+                ctx.fillText('⭕', px + TILE_SIZE/2, py + TILE_SIZE/2);
+            }
+
+            // ロックされたドア描画
+            for (let door of lockedDoors) {
+                drawTile(door.x, door.y, TILE.LOCKED_DOOR);
+            }
+
+            // 箱描画
+            ctx.font = '32px Arial';
+            for (let box of boxes) {
+                const px = box.x * TILE_SIZE;
+                const py = box.y * TILE_SIZE;
+                ctx.fillStyle = '#8b4513';
+                ctx.fillRect(px + 4, py + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+                ctx.fillText('📦', px + TILE_SIZE/2, py + TILE_SIZE/2);
+            }
+
+            // リズムインジケーター描画
+            drawRhythmIndicator();
+
+            // プレイヤー描画
+            const px = player.x * TILE_SIZE;
+            const py = player.y * TILE_SIZE;
+            ctx.fillText('🧙', px + TILE_SIZE/2, py + TILE_SIZE/2);
+        }
+
+        // リズムチェック
+        function checkBeat() {
+            const inPerfectZone = (beatPhase > 0.9 || beatPhase < 0.1);
+            const inGoodZone = (beatPhase > 0.8 || beatPhase < 0.2);
+            
+            if (inPerfectZone) return 'perfect';
+            if (inGoodZone) return 'good';
+            return 'miss';
+        }
+
+        // HP更新
+        function updateHP() {
+            const hpFill = document.getElementById('hp-fill');
+            if (hpFill) {
+                const percent = Math.max(0, (hp / maxHp) * 100);
+                hpFill.style.width = percent + '%';
+            }
+            
+            if (hp <= 0 && !gameOver) {
+                endGame(false);
+            }
+        }
+
+        // 移動処理
+        function tryMove(dx, dy) {
+            if (gameOver) return;
+            
+            const now = Date.now();
+            if (now - lastMoveTime < moveDelay) return;
+
+            const beatResult = checkBeat();
+            
+            const newX = player.x + dx;
+            const newY = player.y + dy;
+
+            // 範囲外チェック
+            if (newX < 0 || newX >= GRID_SIZE || newY < 0 || newY >= GRID_SIZE) {
+                return;
+            }
+
+            // 壁チェック
+            if (grid[newY][newX] === TILE.WALL) {
+                if (beatResult === 'miss') {
+                    hp = Math.max(0, hp - 5);
+                    updateHP();
+                    showMessage('壁にぶつかった！ -5HP', 'miss');
+                } else {
+                    showMessage('壁だ！', 'miss');
+                }
+                lastMoveTime = now;
+                return;
+            }
+
+            // ロックされたドアチェック
+            const doorIndex = lockedDoors.findIndex(d => d.x === newX && d.y === newY);
+            if (doorIndex !== -1) {
+                if (keys > 0) {
+                    keys--;
+                    lockedDoors.splice(doorIndex, 1);
+                    if (beatResult === 'perfect') {
+                        showMessage('⚡ PERFECT! ドアを開けた！', 'perfect');
+                    } else {
+                        showMessage('ドアを開けた！', 'good');
+                    }
+                } else {
+                    if (beatResult === 'miss') {
+                        hp = Math.max(0, hp - 5);
+                        updateHP();
+                        showMessage('鍵が必要！ -5HP', 'miss');
+                    } else {
+                        showMessage('鍵が必要！', 'miss');
+                    }
+                    lastMoveTime = now;
+                    return;
+                }
+            }
+
+            // 箱を押す
+            const boxIndex = boxes.findIndex(b => b.x === newX && b.y === newY);
+            if (boxIndex !== -1) {
+                const boxNewX = newX + dx;
+                const boxNewY = newY + dy;
+
+                // 範囲外チェック
+                if (boxNewX < 0 || boxNewX >= GRID_SIZE || boxNewY < 0 || boxNewY >= GRID_SIZE) {
+                    if (beatResult === 'miss') {
+                        hp = Math.max(0, hp - 3);
+                        updateHP();
+                        showMessage('箱を押せない！ -3HP', 'miss');
+                    } else {
+                        showMessage('箱を押せない！', 'miss');
+                    }
+                    lastMoveTime = now;
+                    return;
+                }
+
+                // 箱の移動先チェック
+                if (grid[boxNewY][boxNewX] === TILE.WALL || 
+                    boxes.some(b => b.x === boxNewX && b.y === boxNewY) ||
+                    lockedDoors.some(d => d.x === boxNewX && d.y === boxNewY)) {
+                    if (beatResult === 'miss') {
+                        hp = Math.max(0, hp - 3);
+                        updateHP();
+                        showMessage('箱を押せない！ -3HP', 'miss');
+                    } else {
+                        showMessage('箱を押せない！', 'miss');
+                    }
+                    lastMoveTime = now;
+                    return;
+                }
+
+                boxes[boxIndex].x = boxNewX;
+                boxes[boxIndex].y = boxNewY;
+                
+                if (beatResult === 'perfect') {
+                    showMessage('⚡ PERFECT! 箱を押した！', 'perfect');
+                } else if (beatResult === 'good') {
+                    showMessage('✓ GOOD! 箱を押した！', 'good');
+                } else {
+                    hp = Math.max(0, hp - 3);
+                    updateHP();
+                    showMessage('✗ ミス！ 箱を押した -3HP', 'miss');
+                }
+            }
+
+            // タイミングによるペナルティ/ボーナス
+            if (beatResult === 'perfect') {
+                if (boxIndex === -1) {
+                    showMessage('⚡ PERFECT!', 'perfect');
+                }
+                hp = Math.min(maxHp, hp + 1);
+                updateHP();
+            } else if (beatResult === 'good') {
+                if (boxIndex === -1) {
+                    showMessage('✓ GOOD!', 'good');
+                }
+            } else {
+                hp = Math.max(0, hp - 5);
+                updateHP();
+                if (boxIndex === -1) {
+                    showMessage('✗ ミス！ -5HP', 'miss');
+                }
+            }
+
+            // プレイヤー移動
+            player.x = newX;
+            player.y = newY;
+            lastMoveTime = now;
+
+            // アイテム取得
+            if (grid[newY][newX] === TILE.GEM) {
+                gems++;
+                grid[newY][newX] = TILE.FLOOR;
+                hp = Math.min(maxHp, hp + 10);
+                updateHP();
+                showMessage('💎 宝石ゲット！ +10HP', 'good');
+            } else if (grid[newY][newX] === TILE.KEY) {
+                keys++;
+                grid[newY][newX] = TILE.FLOOR;
+                showMessage('🔑 鍵ゲット！', 'good');
+            } else if (grid[newY][newX] === TILE.GOAL) {
+                const allSwitchesActive = switches.length === 0 || switches.every(s => s.active);
+                if (allSwitchesActive) {
+                    floor++;
+                    hp = Math.min(maxHp, hp + 20);
+                    updateHP();
+                    showMessage('🎉 クリア！次のフロアへ +20HP', 'perfect');
+                    setTimeout(() => {
+                        if (!gameOver) {
+                            initLevel();
+                        }
+                    }, 1500);
+                } else {
+                    showMessage('全てのスイッチを押してください！', 'miss');
+                }
+            }
+
+            // スイッチ判定
+            for (let sw of switches) {
+                sw.active = boxes.some(b => b.x === sw.x && b.y === sw.y);
+            }
+        }
+
+        // メッセージ表示
+        function showMessage(text, type) {
+            const msgEl = document.getElementById('message');
+            if (msgEl) {
+                msgEl.textContent = text;
+                msgEl.className = 'message ' + type;
+                
+                if (messageTimeout) {
+                    clearTimeout(messageTimeout);
+                }
+                
+                messageTimeout = setTimeout(() => {
+                    if (msgEl) {
+                        msgEl.textContent = '';
+                        msgEl.className = 'message';
+                    }
+                }, 1000);
+            }
+        }
+
+        // キー入力
+        let keysPressed = {};
+        document.addEventListener('keydown', (e) => {
+            if (gameOver) return;
+            if (keysPressed[e.key]) return;
+            
+            keysPressed[e.key] = true;
+
+            switch(e.key) {
+                case 'ArrowUp':
+                    e.preventDefault();
+                    tryMove(0, -1);
+                    break;
+                case 'ArrowDown':
+                    e.preventDefault();
+                    tryMove(0, 1);
+                    break;
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    tryMove(-1, 0);
+                    break;
+                case 'ArrowRight':
+                    e.preventDefault();
+                    tryMove(1, 0);
+                    break;
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keysPressed[e.key] = false;
+        });
+
+        // ゲーム更新
+        function update() {
+            if (gameOver) {
+                if (animationFrameId) {
+                    cancelAnimationFrame(animationFrameId);
+                    animationFrameId = null;
+                }
+                return;
+            }
+
+            // ビートフェーズ更新
+            beatPhase += 0.02;
+            if (beatPhase >= 1) {
+                beatPhase = 0;
+            }
+
+            const floorEl = document.getElementById('floor');
+            const gemsEl = document.getElementById('gems');
+            const keysEl = document.getElementById('keys');
+            
+            if (floorEl) floorEl.textContent = floor;
+            if (gemsEl) gemsEl.textContent = gems;
+            if (keysEl) keysEl.textContent = keys;
+            
+            draw();
+            animationFrameId = requestAnimationFrame(update);
+        }
+
+        // ゲームオーバー
+        function endGame(won) {
+            if (gameOver) return;
+            
+            gameOver = true;
+            
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            
+            const title = document.getElementById('game-over-title');
+            const message = document.getElementById('game-over-message');
+            
+            if (title && message) {
+                if (won) {
+                    title.textContent = '🎉 全フロアクリア！ 🎉';
+                    message.textContent = 'おめでとうございます！';
+                } else {
+                    title.textContent = 'ゲームオーバー';
+                    message.textContent = 'HPが0になりました';
+                }
+            }
+            
+            const finalFloor = document.getElementById('final-floor');
+            const finalGems = document.getElementById('final-gems');
+            
+            if (finalFloor) finalFloor.textContent = floor;
+            if (finalGems) finalGems.textContent = gems;
+            
+            const gameOverEl = document.getElementById('game-over');
+            if (gameOverEl) {
+                gameOverEl.classList.add('show');
+            }
+        }
+
+        // ゲーム再開
+        function restartGame() {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            
+            if (messageTimeout) {
+                clearTimeout(messageTimeout);
+                messageTimeout = null;
+            }
+            
+            floor = 1;
+            gems = 0;
+            keys = 0;
+            hp = 100;
+            gameOver = false;
+            beatPhase = 0;
+            keysPressed = {};
+            
+            const gameOverEl = document.getElementById('game-over');
+            if (gameOverEl) {
+                gameOverEl.classList.remove('show');
+            }
+            
+            initLevel();
+            updateHP();
+            update();
+        }
+
+        // ゲーム開始
+        initLevel();
+        updateHP();
+        update();
+    </script>
+</body>
+</html>
