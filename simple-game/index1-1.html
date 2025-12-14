@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ボール避けゲーム v1.1</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: #000000;
+            font-family: 'Arial', sans-serif;
+            color: #FFFFFF;
+        }
+        #gameArea {
+            width: 400px;
+            height: 400px;
+            background: #1a1a1a;
+            border: 3px solid #FFFFFF;
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+        #player {
+            width: 30px;
+            height: 30px;
+            background: #FFFFFF;
+            border-radius: 50%;
+            position: absolute;
+            transition: all 0.1s;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
+        }
+        .enemy {
+            width: 25px;
+            height: 25px;
+            background: #666666;
+            border: 2px solid #FFFFFF;
+            border-radius: 50%;
+            position: absolute;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+        }
+        #score {
+            font-size: 28px;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            border: 2px solid #FFFFFF;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            display: none;
+        }
+        #restartBtn {
+            margin-top: 20px;
+            padding: 12px 30px;
+            font-size: 18px;
+            background: #FFFFFF;
+            color: #000000;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+        #restartBtn:hover {
+            transform: scale(1.1);
+            background: #CCCCCC;
+        }
+        .version {
+            margin-top: 20px;
+            font-size: 14px;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+    <div id="score">スコア: 0</div>
+    <div id="gameArea">
+        <div id="player"></div>
+        <div id="gameOver">
+            <h2>ゲームオーバー！</h2>
+            <p id="finalScore"></p>
+            <button id="restartBtn">もう一度</button>
+        </div>
+    </div>
+    <div class="version">v1.1</div>
+
+    <script>
+        const gameArea = document.getElementById('gameArea');
+        const player = document.getElementById('player');
+        const scoreDisplay = document.getElementById('score');
+        const gameOverDiv = document.getElementById('gameOver');
+        const finalScoreDisplay = document.getElementById('finalScore');
+        const restartBtn = document.getElementById('restartBtn');
+
+        let score = 0;
+        let gameRunning = true;
+        let enemies = [];
+
+        // プレイヤーの初期位置
+        let playerX = 185;
+        let playerY = 185;
+        player.style.left = playerX + 'px';
+        player.style.top = playerY + 'px';
+
+        // マウスでプレイヤーを動かす
+        gameArea.addEventListener('mousemove', (e) => {
+            if (!gameRunning) return;
+            const rect = gameArea.getBoundingClientRect();
+            playerX = e.clientX - rect.left - 15;
+            playerY = e.clientY - rect.top - 15;
+            
+            // 範囲制限
+            playerX = Math.max(0, Math.min(370, playerX));
+            playerY = Math.max(0, Math.min(370, playerY));
+            
+            player.style.left = playerX + 'px';
+            player.style.top = playerY + 'px';
+        });
+
+        // 敵を生成
+        function createEnemy() {
+            if (!gameRunning) return;
+            
+            const enemy = document.createElement('div');
+            enemy.className = 'enemy';
+            
+            // ランダムな位置から出現
+            const side = Math.floor(Math.random() * 4);
+            let x, y, vx, vy;
+            
+            if (side === 0) { // 上
+                x = Math.random() * 375;
+                y = -25;
+                vx = (Math.random() - 0.5) * 4;
+                vy = Math.random() * 2 + 2;
+            } else if (side === 1) { // 右
+                x = 400;
+                y = Math.random() * 375;
+                vx = -(Math.random() * 2 + 2);
+                vy = (Math.random() - 0.5) * 4;
+            } else if (side === 2) { // 下
+                x = Math.random() * 375;
+                y = 400;
+                vx = (Math.random() - 0.5) * 4;
+                vy = -(Math.random() * 2 + 2);
+            } else { // 左
+                x = -25;
+                y = Math.random() * 375;
+                vx = Math.random() * 2 + 2;
+                vy = (Math.random() - 0.5) * 4;
+            }
+            
+            enemy.style.left = x + 'px';
+            enemy.style.top = y + 'px';
+            gameArea.appendChild(enemy);
+            
+            enemies.push({ element: enemy, x, y, vx, vy });
+        }
+
+        // 衝突判定
+        function checkCollision() {
+            for (let enemy of enemies) {
+                const dx = (playerX + 15) - (enemy.x + 12.5);
+                const dy = (playerY + 15) - (enemy.y + 12.5);
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < 22) {
+                    endGame();
+                    return;
+                }
+            }
+        }
+
+        // ゲームループ
+        function gameLoop() {
+            if (!gameRunning) return;
+            
+            // 敵を移動
+            enemies.forEach((enemy, index) => {
+                enemy.x += enemy.vx;
+                enemy.y += enemy.vy;
+                enemy.element.style.left = enemy.x + 'px';
+                enemy.element.style.top = enemy.y + 'px';
+                
+                // 画面外に出たら削除
+                if (enemy.x < -50 || enemy.x > 450 || enemy.y < -50 || enemy.y > 450) {
+                    enemy.element.remove();
+                    enemies.splice(index, 1);
+                    score += 10;
+                    scoreDisplay.textContent = 'スコア: ' + score;
+                }
+            });
+            
+            checkCollision();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // ゲーム終了
+        function endGame() {
+            gameRunning = false;
+            gameOverDiv.style.display = 'block';
+            finalScoreDisplay.textContent = '最終スコア: ' + score;
+        }
+
+        // リスタート
+        restartBtn.addEventListener('click', () => {
+            // 敵を全削除
+            enemies.forEach(enemy => enemy.element.remove());
+            enemies = [];
+            
+            // リセット
+            score = 0;
+            scoreDisplay.textContent = 'スコア: 0';
+            gameOverDiv.style.display = 'none';
+            playerX = 185;
+            playerY = 185;
+            player.style.left = playerX + 'px';
+            player.style.top = playerY + 'px';
+            gameRunning = true;
+            
+            gameLoop();
+        });
+
+        // 敵の生成間隔
+        setInterval(() => {
+            if (gameRunning) {
+                createEnemy();
+            }
+        }, 1000);
+
+        // ゲーム開始
+        gameLoop();
+    </script>
+</body>
+</html>
