@@ -1,0 +1,1319 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Grid Explorer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1a3e 50%, #0a0e27 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #00ffff;
+            position: relative;
+            overflow: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                repeating-linear-gradient(
+                    0deg,
+                    rgba(0, 255, 255, 0.03) 0px,
+                    transparent 1px,
+                    transparent 2px,
+                    rgba(0, 255, 255, 0.03) 3px
+                );
+            pointer-events: none;
+            animation: scanlines 8s linear infinite;
+        }
+
+        @keyframes scanlines {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(10px); }
+        }
+
+        .game-container {
+            text-align: center;
+            background: rgba(10, 14, 39, 0.9);
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 
+                0 0 30px rgba(0, 255, 255, 0.3),
+                inset 0 0 30px rgba(0, 255, 255, 0.05);
+            border: 2px solid rgba(0, 255, 255, 0.3);
+            position: relative;
+            z-index: 1;
+            max-width: 95vw;
+        }
+
+        h1 {
+            margin-bottom: 12px;
+            font-size: 2em;
+            text-shadow: 
+                0 0 10px rgba(0, 255, 255, 0.8),
+                0 0 20px rgba(0, 255, 255, 0.5),
+                0 0 30px rgba(0, 255, 255, 0.3);
+            letter-spacing: 3px;
+            color: #00ffff;
+        }
+
+        .info {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 12px;
+            font-size: 0.95em;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .info div {
+            background: rgba(0, 255, 255, 0.1);
+            padding: 6px 12px;
+            border-radius: 5px;
+            min-width: 85px;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+            font-size: 0.9em;
+        }
+
+        .energy-container {
+            background: rgba(0, 255, 255, 0.1);
+            border-radius: 5px;
+            padding: 6px 12px;
+            min-width: 160px;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+        }
+
+        .energy-bar {
+            width: 100%;
+            height: 16px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 3px;
+            margin-top: 4px;
+            overflow: hidden;
+            border: 1px solid rgba(0, 255, 255, 0.5);
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+
+        .energy-fill {
+            height: 100%;
+            background: linear-gradient(90deg, 
+                #ff00ff 0%, 
+                #00ffff 50%, 
+                #00ff00 100%);
+            transition: width 0.3s;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+        }
+
+        .energy-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 10px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px black;
+            pointer-events: none;
+        }
+
+        .optimal-info {
+            margin: 8px 0;
+            font-size: 0.8em;
+            color: #ffff00;
+            background: rgba(255, 255, 0, 0.1);
+            padding: 5px 10px;
+            border-radius: 5px;
+            border: 1px solid rgba(255, 255, 0, 0.3);
+        }
+
+        #game-canvas {
+            background: #000510;
+            border-radius: 5px;
+            display: block;
+            margin: 0 auto;
+            box-shadow: 
+                0 0 20px rgba(0, 255, 255, 0.5),
+                inset 0 0 30px rgba(0, 100, 255, 0.2);
+            border: 2px solid rgba(0, 255, 255, 0.5);
+        }
+
+        .instructions {
+            margin-top: 12px;
+            font-size: 0.75em;
+            opacity: 0.9;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+            color: #00ffff;
+            line-height: 1.3;
+        }
+
+        .message {
+            min-height: 28px;
+            font-size: 1.1em;
+            font-weight: bold;
+            margin: 8px 0;
+            text-shadow: 0 0 10px currentColor;
+            letter-spacing: 1px;
+        }
+
+        .message.great {
+            color: #ffff00;
+            animation: glow-yellow 0.5s ease-in-out;
+        }
+
+        .message.good {
+            color: #00ff00;
+            animation: glow-green 0.5s ease-in-out;
+        }
+
+        .message.warning {
+            color: #ff9900;
+            animation: glow-orange 0.5s ease-in-out;
+        }
+
+        .message.bad {
+            color: #ff0066;
+            animation: glow-red 0.5s ease-in-out;
+        }
+
+        .message.heal {
+            color: #00ff88;
+            animation: glow-heal 0.5s ease-in-out;
+        }
+
+        .message.special {
+            color: #ff00ff;
+            animation: glow-purple 0.5s ease-in-out;
+        }
+
+        @keyframes glow-yellow {
+            0%, 100% { text-shadow: 0 0 10px #ffff00; }
+            50% { text-shadow: 0 0 30px #ffff00, 0 0 50px #ffff00; }
+        }
+
+        @keyframes glow-green {
+            0%, 100% { text-shadow: 0 0 10px #00ff00; }
+            50% { text-shadow: 0 0 30px #00ff00, 0 0 50px #00ff00; }
+        }
+
+        @keyframes glow-orange {
+            0%, 100% { text-shadow: 0 0 10px #ff9900; }
+            50% { text-shadow: 0 0 30px #ff9900, 0 0 50px #ff9900; }
+        }
+
+        @keyframes glow-red {
+            0%, 100% { text-shadow: 0 0 10px #ff0066; }
+            50% { text-shadow: 0 0 30px #ff0066, 0 0 50px #ff0066; }
+        }
+
+        @keyframes glow-heal {
+            0%, 100% { text-shadow: 0 0 10px #00ff88; }
+            50% { text-shadow: 0 0 30px #00ff88, 0 0 50px #00ff88; }
+        }
+
+        @keyframes glow-purple {
+            0%, 100% { text-shadow: 0 0 10px #ff00ff; }
+            50% { text-shadow: 0 0 30px #ff00ff, 0 0 50px #ff00ff; }
+        }
+
+        .game-over {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(10, 14, 39, 0.98);
+            padding: 40px;
+            border-radius: 10px;
+            display: none;
+            z-index: 100;
+            border: 3px solid #00ffff;
+            box-shadow: 
+                0 0 50px rgba(0, 255, 255, 0.8),
+                inset 0 0 30px rgba(0, 255, 255, 0.1);
+        }
+
+        .game-over.show {
+            display: block;
+            animation: appear 0.3s ease-out;
+        }
+
+        @keyframes appear {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        .game-over button {
+            margin-top: 20px;
+            padding: 15px 30px;
+            font-size: 1.2em;
+            background: rgba(0, 255, 255, 0.2);
+            border: 2px solid #00ffff;
+            border-radius: 5px;
+            color: #00ffff;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Courier New', monospace;
+            text-shadow: 0 0 10px #00ffff;
+        }
+
+        .game-over button:hover {
+            background: rgba(0, 255, 255, 0.4);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.8);
+            transform: scale(1.05);
+        }
+
+        .legend {
+            margin-top: 10px;
+            font-size: 0.7em;
+            background: rgba(0, 255, 255, 0.05);
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            max-height: 180px;
+            overflow-y: auto;
+        }
+
+        .legend-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 4px;
+            text-align: left;
+        }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin: 8px 0;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 5px 10px;
+            font-size: 0.8em;
+            background: rgba(0, 255, 255, 0.15);
+            border: 1px solid rgba(0, 255, 255, 0.4);
+            border-radius: 5px;
+            color: #00ffff;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Courier New', monospace;
+        }
+
+        .btn:hover {
+            background: rgba(0, 255, 255, 0.3);
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+        }
+
+        .btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .teleport-mode {
+            background: rgba(255, 0, 255, 0.2);
+            border: 2px solid #ff00ff;
+            padding: 8px;
+            border-radius: 5px;
+            margin: 8px 0;
+            font-size: 0.85em;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>⚡ QUANTUM GRID EXPLORER ⚡</h1>
+        
+        <div class="info">
+            <div>LEVEL: <span id="floor">1</span></div>
+            <div>💎 DATA: <span id="gems">0</span></div>
+            <div>🔑 KEYS: <span id="keys">0</span></div>
+            <div>🌀 PORTAL: <span id="portals">0</span></div>
+            <div class="energy-container">
+                <div style="font-size: 0.85em;">ENERGY: <span id="energy-num">100</span></div>
+                <div class="energy-bar">
+                    <div class="energy-fill" id="energy-fill" style="width: 100%"></div>
+                    <div class="energy-text" id="energy-text">100/100</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="optimal-info">
+            📊 移動: <span id="moves">0</span> | 最適: <span id="optimal">?</span> | 効率: <span id="efficiency">-</span>
+        </div>
+
+        <div class="controls">
+            <button class="btn" onclick="undoMove()" id="undo-btn" disabled>↶ 戻す (Z)</button>
+            <button class="btn" onclick="resetLevel()">🔄 リセット (R)</button>
+            <button class="btn" onclick="activateTeleport()" id="teleport-btn" disabled>🌀 テレポート (T)</button>
+        </div>
+
+        <div id="teleport-mode" class="teleport-mode" style="display: none;">
+            🌀 テレポートモード起動中！移動先をクリック！
+        </div>
+
+        <div class="message" id="message"></div>
+
+        <canvas id="game-canvas" width="500" height="500"></canvas>
+
+        <div class="instructions">
+            <p><strong>⬆️⬇️⬅️➡️ 矢印キーで移動 | クリックでテレポート先指定</strong></p>
+            <p>💡 マスの<span style="color: #ffff00;">数字</span>=エネルギー消費量。📦箱を押してもエネルギー消費なし！</p>
+            <p>💚 <strong>止まると1秒で2回復</strong></p>
+            <p><strong>🌀 新要素：テレポートゲート！</strong> ポータルチャージを集めて瞬間移動！</p>
+            <p><strong>🔄 新要素：ワンウェイゲート！</strong> 一方通行のゲート。戻れないので注意！</p>
+            <p>🚪=ゴール / 🔒=要キー / 💎=データ(+5) / 🔋=バッテリー(+8) / ⚡=充電ゾーン(消費1)</p>
+            <p>💊=ナノヒール(+3) / 🌀=ポータル(テレポート可能) / ➡️=ワンウェイ(一方通行)</p>
+        </div>
+
+        <div class="legend">
+            <div class="legend-grid">
+                <div>🤖=プレイヤー</div>
+                <div>📦=押せる箱</div>
+                <div>💎=データ +5</div>
+                <div>🔋=バッテリー +8</div>
+                <div>💊=ナノヒール +3</div>
+                <div>⚡=充電ゾーン</div>
+                <div>🌀=ポータル</div>
+                <div>➡️=ワンウェイ</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="game-over" id="game-over">
+        <h2 id="game-over-title">SYSTEM HALT</h2>
+        <p id="game-over-message"></p>
+        <p>LEVEL: <span id="final-floor">0</span></p>
+        <p>DATA: <span id="final-gems">0</span></p>
+        <p>EFFICIENCY: <span id="final-efficiency">0</span>%</p>
+        <button onclick="restartGame()">RESTART SYSTEM</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        const TILE_SIZE = 50;
+        const GRID_SIZE = 10;
+
+        // アイテムタイプ定義（回復量を一桁に調整）
+        const ITEM_TYPES = {
+            GEM: { emoji: '💎', energy: 5, color: '#00ffff', name: 'データ' },
+            BATTERY: { emoji: '🔋', energy: 8, color: '#00ff00', name: 'バッテリー' },
+            NANO_HEAL: { emoji: '💊', energy: 3, color: '#ff66ff', name: 'ナノヒール' },
+            PORTAL_CHARGE: { emoji: '🌀', energy: 0, color: '#ff00ff', name: 'ポータル' }
+        };
+
+        // ゲーム状態
+        let player = { x: 1, y: 1 };
+        let floor = 1;
+        let gems = 0;
+        let keys = 0;
+        let portalCharges = 0;
+        let energy = 100;
+        let maxEnergy = 100;
+        let gameOver = false;
+        let grid = [];
+        let energyCosts = [];
+        let boxes = [];
+        let lockedDoors = [];
+        let items = [];
+        let oneWayGates = [];
+        let moves = 0;
+        let optimalMoves = 0;
+        let totalOptimalMoves = 0;
+        let totalActualMoves = 0;
+        let moveHistory = [];
+        let messageTimeout = null;
+        let teleportMode = false;
+        
+        // 待機回復
+        let lastMoveTime = Date.now();
+        let healInterval = null;
+
+        // タイル種類
+        const TILE = {
+            EMPTY: 0,
+            WALL: 1,
+            FLOOR: 2,
+            GOAL: 3,
+            KEY: 5,
+            LOCKED_DOOR: 6,
+            BOX: 8,
+            CHARGE_ZONE: 10,
+            ITEM: 11,
+            ONEWAY_GATE: 12
+        };
+
+        // エネルギーコストをランダムに生成
+        function generateEnergyCosts() {
+            energyCosts = [];
+            for (let y = 0; y < GRID_SIZE; y++) {
+                energyCosts[y] = [];
+                for (let x = 0; x < GRID_SIZE; x++) {
+                    if (grid[y][x] === TILE.CHARGE_ZONE) {
+                        energyCosts[y][x] = 1;
+                    } else {
+                        energyCosts[y][x] = Math.floor(Math.random() * 7) + 2;
+                    }
+                }
+            }
+            energyCosts[1][1] = 0;
+        }
+
+        // アイテムを配置
+        function placeItems() {
+            items = [];
+            const difficulty = Math.min(floor, 20);
+            
+            // アイテム配置数の決定
+            const itemCounts = {
+                GEM: 2 + Math.floor(Math.random() * 3),
+                BATTERY: 1 + Math.floor(Math.random() * 2),
+                NANO_HEAL: 2 + Math.floor(Math.random() * 3),
+                PORTAL_CHARGE: floor >= 2 ? 1 + Math.floor(Math.random() * 2) : 0
+            };
+
+            // 各アイテムを配置
+            for (let [type, count] of Object.entries(itemCounts)) {
+                for (let i = 0; i < count; i++) {
+                    const pos = findEmptyPosition();
+                    if (pos) {
+                        items.push({ x: pos.x, y: pos.y, type: type });
+                    }
+                }
+            }
+        }
+
+        // 空の位置を見つける
+        function findEmptyPosition() {
+            for (let attempt = 0; attempt < 100; attempt++) {
+                const x = 1 + Math.floor(Math.random() * (GRID_SIZE - 2));
+                const y = 1 + Math.floor(Math.random() * (GRID_SIZE - 2));
+                
+                if (grid[y][x] === TILE.FLOOR && 
+                    (x !== 1 || y !== 1) &&
+                    !items.some(i => i.x === x && i.y === y) &&
+                    !boxes.some(b => b.x === x && b.y === y) &&
+                    !oneWayGates.some(g => g.x === x && g.y === y)) {
+                    return { x, y };
+                }
+            }
+            return null;
+        }
+
+        // ランダムなレベルを生成
+        function generateRandomLevel() {
+            grid = [];
+            for (let y = 0; y < GRID_SIZE; y++) {
+                grid[y] = [];
+                for (let x = 0; x < GRID_SIZE; x++) {
+                    grid[y][x] = TILE.FLOOR;
+                }
+            }
+
+            boxes = [];
+            lockedDoors = [];
+            oneWayGates = [];
+
+            // ゴール配置
+            const goalX = 7 + Math.floor(Math.random() * 2);
+            const goalY = 7 + Math.floor(Math.random() * 2);
+            grid[goalY][goalX] = TILE.GOAL;
+
+            const difficulty = Math.min(floor, 20);
+
+            // 充電エリア配置
+            const chargeCount = 1 + Math.floor(Math.random() * 2);
+            for (let i = 0; i < chargeCount; i++) {
+                const pos = findEmptyPosition();
+                if (pos) grid[pos.y][pos.x] = TILE.CHARGE_ZONE;
+            }
+
+            // ワンウェイゲート配置（新要素）
+            if (floor >= 3) {
+                const gateCount = 1 + Math.floor(Math.random() * 2);
+                for (let i = 0; i < gateCount; i++) {
+                    const pos = findEmptyPosition();
+                    if (pos) {
+                        const directions = ['up', 'down', 'left', 'right'];
+                        const dir = directions[Math.floor(Math.random() * directions.length)];
+                        oneWayGates.push({ x: pos.x, y: pos.y, direction: dir });
+                    }
+                }
+            }
+
+            // 鍵と扉
+            if (floor >= 4) {
+                const keyCount = 1 + Math.floor(Math.random() * 2);
+                for (let i = 0; i < keyCount; i++) {
+                    const keyPos = findEmptyPosition();
+                    if (keyPos) grid[keyPos.y][keyPos.x] = TILE.KEY;
+                    
+                    const doorPos = findEmptyPosition();
+                    if (doorPos) {
+                        grid[doorPos.y][doorPos.x] = TILE.LOCKED_DOOR;
+                        lockedDoors.push({ x: doorPos.x, y: doorPos.y });
+                    }
+                }
+            }
+
+            // ボックス
+            if (floor >= 2) {
+                const boxCount = 1 + Math.floor(Math.random() * 3);
+                for (let i = 0; i < boxCount; i++) {
+                    const pos = findEmptyPosition();
+                    if (pos) boxes.push({ x: pos.x, y: pos.y });
+                }
+            }
+
+            // アイテム配置
+            placeItems();
+
+            // 最適移動数計算
+            const distToGoal = Math.abs(goalX - 1) + Math.abs(goalY - 1);
+            const itemBonus = items.length;
+            optimalMoves = distToGoal + Math.floor(itemBonus * 1.2);
+        }
+
+        // レベル初期化
+        function initLevel() {
+            generateRandomLevel();
+            
+            moves = 0;
+            moveHistory = [];
+            teleportMode = false;
+            
+            generateEnergyCosts();
+            
+            player = { x: 1, y: 1 };
+            lastMoveTime = Date.now();
+
+            startHealInterval();
+            updateUndoButton();
+            updateTeleportButton();
+            updateStats();
+        }
+
+        // 待機回復
+        function startHealInterval() {
+            if (healInterval) clearInterval(healInterval);
+            
+            healInterval = setInterval(() => {
+                if (gameOver) return;
+                
+                const timeSinceLastMove = Date.now() - lastMoveTime;
+                
+                if (timeSinceLastMove >= 1000 && energy < maxEnergy) {
+                    const healAmount = 2;
+                    energy = Math.min(maxEnergy, energy + healAmount);
+                    updateEnergy();
+                }
+            }, 1000);
+        }
+
+        // タイル描画
+        function drawTile(x, y, type) {
+            const px = x * TILE_SIZE;
+            const py = y * TILE_SIZE;
+
+            ctx.fillStyle = '#000510';
+            ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+
+            ctx.strokeStyle = 'rgba(0, 255, 255, 0.2)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(px, py, TILE_SIZE, TILE_SIZE);
+
+            ctx.font = '24px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            switch(type) {
+                case TILE.FLOOR:
+                    ctx.fillStyle = '#001020';
+                    ctx.fillRect(px + 3, py + 3, TILE_SIZE - 6, TILE_SIZE - 6);
+                    const cost = energyCosts[y][x];
+                    if (cost > 0) {
+                        ctx.font = 'bold 11px Arial';
+                        ctx.fillStyle = cost > 6 ? '#ff6666' : cost > 4 ? '#ffaa66' : '#66ff66';
+                        ctx.fillText(cost, px + TILE_SIZE/2, py + TILE_SIZE/2);
+                    }
+                    break;
+                case TILE.GOAL:
+                    ctx.fillStyle = '#00ff00';
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = '#00ff00';
+                    ctx.fillRect(px + 3, py + 3, TILE_SIZE - 6, TILE_SIZE - 6);
+                    ctx.shadowBlur = 0;
+                    ctx.font = '24px Arial';
+                    ctx.fillText('🚪', px + TILE_SIZE/2, py + TILE_SIZE/2);
+                    break;
+                case TILE.KEY:
+                    ctx.fillStyle = '#001020';
+                    ctx.fillRect(px + 3, py + 3, TILE_SIZE - 6, TILE_SIZE - 6);
+                    const keyCost = energyCosts[y][x];
+                    if (keyCost > 0) {
+                        ctx.font = 'bold 10px Arial';
+                        ctx.fillStyle = '#66ff66';
+                        ctx.fillText(keyCost, px + TILE_SIZE/2, py + TILE_SIZE/2 + 8);
+                    }
+                    ctx.shadowBlur = 12;
+                    ctx.shadowColor = '#ffff00';
+                    ctx.font = '20px Arial';
+                    ctx.fillText('🔑', px + TILE_SIZE/2, py + TILE_SIZE/2 - 3);
+                    ctx.shadowBlur = 0;
+                    break;
+                case TILE.LOCKED_DOOR:
+                    ctx.fillStyle = '#330011';
+                    ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+                    ctx.strokeStyle = '#ff0066';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(px + 2, py + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+                    ctx.shadowBlur = 12;
+                    ctx.shadowColor = '#ff0066';
+                    ctx.font = '24px Arial';
+                    ctx.fillText('🔒', px + TILE_SIZE/2, py + TILE_SIZE/2);
+                    ctx.shadowBlur = 0;
+                    break;
+                case TILE.CHARGE_ZONE:
+                    ctx.fillStyle = '#002200';
+                    ctx.fillRect(px + 3, py + 3, TILE_SIZE - 6, TILE_SIZE - 6);
+                    ctx.strokeStyle = 'rgba(0, 255, 0, 0.5)';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(px + 5, py + 5, TILE_SIZE - 10, TILE_SIZE - 10);
+                    ctx.font = 'bold 10px Arial';
+                    ctx.fillStyle = '#00ff00';
+                    ctx.fillText('1', px + TILE_SIZE/2, py + TILE_SIZE/2 + 5);
+                    ctx.font = '16px Arial';
+                    ctx.fillText('⚡', px + TILE_SIZE/2, py + TILE_SIZE/2 - 5);
+                    break;
+            }
+        }
+
+        // ワンウェイゲート描画
+        function drawOneWayGate(gate) {
+            const px = gate.x * TILE_SIZE;
+            const py = gate.y * TILE_SIZE;
+            
+            ctx.fillStyle = '#220033';
+            ctx.fillRect(px + 3, py + 3, TILE_SIZE - 6, TILE_SIZE - 6);
+            
+            ctx.strokeStyle = '#ff00ff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(px + 5, py + 5, TILE_SIZE - 10, TILE_SIZE - 10);
+            
+            ctx.font = '20px Arial';
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#ff00ff';
+            
+            let arrow = '➡️';
+            switch(gate.direction) {
+                case 'up': arrow = '⬆️'; break;
+                case 'down': arrow = '⬇️'; break;
+                case 'left': arrow = '⬅️'; break;
+                case 'right': arrow = '➡️'; break;
+            }
+            
+            ctx.fillText(arrow, px + TILE_SIZE/2, py + TILE_SIZE/2);
+            ctx.shadowBlur = 0;
+        }
+
+        // 描画
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#000510';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // グリッド描画
+            for (let y = 0; y < GRID_SIZE; y++) {
+                for (let x = 0; x < GRID_SIZE; x++) {
+                    drawTile(x, y, grid[y][x]);
+                }
+            }
+
+            // ワンウェイゲート描画
+            for (let gate of oneWayGates) {
+                drawOneWayGate(gate);
+            }
+
+            // アイテム描画
+            ctx.font = '20px Arial';
+            for (let item of items) {
+                const px = item.x * TILE_SIZE;
+                const py = item.y * TILE_SIZE;
+                
+                const itemData = ITEM_TYPES[item.type];
+                ctx.fillStyle = '#001020';
+                ctx.fillRect(px + 3, py + 3, TILE_SIZE - 6, TILE_SIZE - 6);
+                
+                const cost = energyCosts[item.y][item.x];
+                if (cost > 0) {
+                    ctx.font = 'bold 10px Arial';
+                    ctx.fillStyle = '#66ff66';
+                    ctx.fillText(cost, px + TILE_SIZE/2, py + TILE_SIZE/2 + 8);
+                }
+                
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = itemData.color;
+                ctx.font = '18px Arial';
+                ctx.fillText(itemData.emoji, px + TILE_SIZE/2, py + TILE_SIZE/2 - 3);
+                ctx.shadowBlur = 0;
+            }
+
+            // 扉描画
+            for (let door of lockedDoors) {
+                drawTile(door.x, door.y, TILE.LOCKED_DOOR);
+            }
+
+            // ボックス描画
+            ctx.font = '24px Arial';
+            for (let box of boxes) {
+                const px = box.x * TILE_SIZE;
+                const py = box.y * TILE_SIZE;
+                ctx.fillStyle = '#1a3344';
+                ctx.fillRect(px + 3, py + 3, TILE_SIZE - 6, TILE_SIZE - 6);
+                ctx.strokeStyle = '#00ffff';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(px + 5, py + 5, TILE_SIZE - 10, TILE_SIZE - 10);
+                ctx.fillText('📦', px + TILE_SIZE/2, py + TILE_SIZE/2);
+            }
+
+            // プレイヤー描画
+            const px = player.x * TILE_SIZE;
+            const py = player.y * TILE_SIZE;
+            ctx.shadowBlur = 12;
+            ctx.shadowColor = teleportMode ? '#ff00ff' : '#00ffff';
+            ctx.font = '24px Arial';
+            ctx.fillText('🤖', px + TILE_SIZE/2, py + TILE_SIZE/2);
+            ctx.shadowBlur = 0;
+        }
+
+        // エネルギー更新
+        function updateEnergy() {
+            const energyFill = document.getElementById('energy-fill');
+            const energyNum = document.getElementById('energy-num');
+            const energyText = document.getElementById('energy-text');
+            
+            if (energyFill && energyNum && energyText) {
+                const percent = Math.max(0, (energy / maxEnergy) * 100);
+                energyFill.style.width = percent + '%';
+                energyNum.textContent = energy;
+                energyText.textContent = `${energy}/${maxEnergy}`;
+                
+                if (percent < 20) {
+                    energyFill.style.background = '#ff0066';
+                } else if (percent < 50) {
+                    energyFill.style.background = 'linear-gradient(90deg, #ff6600, #ffff00)';
+                } else {
+                    energyFill.style.background = 'linear-gradient(90deg, #ff00ff, #00ffff, #00ff00)';
+                }
+            }
+            
+            if (energy <= 0 && !gameOver) {
+                endGame(false);
+            }
+        }
+
+        // 統計更新
+        function updateStats() {
+            document.getElementById('moves').textContent = moves;
+            document.getElementById('optimal').textContent = optimalMoves;
+            document.getElementById('portals').textContent = portalCharges;
+            
+            const efficiencyEl = document.getElementById('efficiency');
+            if (moves === 0) {
+                efficiencyEl.textContent = '-';
+            } else {
+                const eff = Math.round((optimalMoves / moves) * 100);
+                efficiencyEl.textContent = eff + '%';
+                efficiencyEl.style.color = eff >= 90 ? '#00ff00' : eff >= 70 ? '#ffff00' : '#ff6666';
+            }
+            
+            document.getElementById('floor').textContent = floor;
+            document.getElementById('gems').textContent = gems;
+            document.getElementById('keys').textContent = keys;
+        }
+
+        // 戻すボタン
+        function updateUndoButton() {
+            const undoBtn = document.getElementById('undo-btn');
+            if (undoBtn) undoBtn.disabled = moveHistory.length === 0;
+        }
+
+        // テレポートボタン
+        function updateTeleportButton() {
+            const teleportBtn = document.getElementById('teleport-btn');
+            if (teleportBtn) teleportBtn.disabled = portalCharges === 0;
+        }
+
+        // テレポート起動
+        function activateTeleport() {
+            if (portalCharges > 0 && !teleportMode && !gameOver) {
+                teleportMode = true;
+                document.getElementById('teleport-mode').style.display = 'block';
+                showMessage('🌀 テレポート先をクリック！', 'special');
+                draw();
+            }
+        }
+
+        // 状態保存
+        function saveState() {
+            moveHistory.push({
+                player: { ...player },
+                boxes: JSON.parse(JSON.stringify(boxes)),
+                lockedDoors: JSON.parse(JSON.stringify(lockedDoors)),
+                grid: JSON.parse(JSON.stringify(grid)),
+                items: JSON.parse(JSON.stringify(items)),
+                gems: gems,
+                keys: keys,
+                portalCharges: portalCharges,
+                energy: energy,
+                moves: moves
+            });
+            
+            if (moveHistory.length > 50) moveHistory.shift();
+            updateUndoButton();
+        }
+
+        // 戻す
+        function undoMove() {
+            if (moveHistory.length === 0 || gameOver) return;
+            
+            const state = moveHistory.pop();
+            player = state.player;
+            boxes = state.boxes;
+            lockedDoors = state.lockedDoors;
+            grid = state.grid;
+            items = state.items;
+            gems = state.gems;
+            keys = state.keys;
+            portalCharges = state.portalCharges;
+            energy = state.energy;
+            moves = state.moves;
+            
+            lastMoveTime = Date.now();
+            updateStats();
+            updateEnergy();
+            updateUndoButton();
+            updateTeleportButton();
+            draw();
+            showMessage('↶ 移動を戻しました', 'good');
+        }
+
+        // レベルリセット
+        function resetLevel() {
+            if (gameOver) return;
+            moveHistory = [];
+            moves = 0;
+            energy = Math.min(maxEnergy, energy + 10);
+            initLevel();
+            draw();
+            showMessage('🔄 レベルをリセット！', 'good');
+        }
+
+        // アイテム取得
+        function collectItem(item) {
+            const itemData = ITEM_TYPES[item.type];
+            
+            switch(item.type) {
+                case 'GEM':
+                case 'BATTERY':
+                case 'NANO_HEAL':
+                    energy = Math.min(maxEnergy, energy + itemData.energy);
+                    gems++;
+                    showMessage(`${itemData.emoji} ${itemData.name} +${itemData.energy}`, 'great');
+                    break;
+                    
+                case 'PORTAL_CHARGE':
+                    portalCharges++;
+                    showMessage('🌀 ポータルチャージ取得！', 'special');
+                    updateTeleportButton();
+                    break;
+            }
+            
+            updateEnergy();
+        }
+
+        // ワンウェイゲートチェック
+        function checkOneWayGate(fromX, fromY, toX, toY) {
+            const gate = oneWayGates.find(g => g.x === toX && g.y === toY);
+            if (!gate) return true;
+            
+            const dx = toX - fromX;
+            const dy = toY - fromY;
+            
+            switch(gate.direction) {
+                case 'up': return dy < 0;
+                case 'down': return dy > 0;
+                case 'left': return dx < 0;
+                case 'right': return dx > 0;
+            }
+            return false;
+        }
+
+        // 移動処理
+        function tryMove(dx, dy) {
+            if (gameOver) return;
+            lastMoveTime = Date.now();
+            
+            const newX = player.x + dx;
+            const newY = player.y + dy;
+
+            if (newX < 0 || newX >= GRID_SIZE || newY < 0 || newY >= GRID_SIZE) return;
+
+            // ワンウェイゲートチェック
+            if (!checkOneWayGate(player.x, player.y, newX, newY)) {
+                showMessage('⛔ この方向には進めません', 'warning');
+                return;
+            }
+
+            // 扉チェック
+            const doorIndex = lockedDoors.findIndex(d => d.x === newX && d.y === newY);
+            if (doorIndex !== -1) {
+                if (keys > 0) {
+                    saveState();
+                    keys--;
+                    lockedDoors.splice(doorIndex, 1);
+                    showMessage('🔓 ドアを開けました', 'good');
+                    updateStats();
+                    draw();
+                } else {
+                    showMessage('🔑 鍵が必要です', 'warning');
+                }
+                return;
+            }
+
+            // ボックスチェック
+            const boxIndex = boxes.findIndex(b => b.x === newX && b.y === newY);
+            if (boxIndex !== -1) {
+                const boxNewX = newX + dx;
+                const boxNewY = newY + dy;
+
+                if (boxNewX < 0 || boxNewX >= GRID_SIZE || boxNewY < 0 || boxNewY >= GRID_SIZE) {
+                    showMessage('📦 箱を押せません', 'warning');
+                    return;
+                }
+
+                if (boxes.some(b => b.x === boxNewX && b.y === boxNewY) ||
+                    lockedDoors.some(d => d.x === boxNewX && d.y === boxNewY)) {
+                    showMessage('📦 箱を押せません', 'warning');
+                    return;
+                }
+
+                saveState();
+                boxes[boxIndex].x = boxNewX;
+                boxes[boxIndex].y = boxNewY;
+                showMessage('📦 箱を押した！', 'good');
+            } else {
+                saveState();
+                
+                // 移動時のエネルギー消費
+                let moveCost = energyCosts[newY][newX];
+                energy = Math.max(0, energy - moveCost);
+                updateEnergy();
+            }
+
+            player.x = newX;
+            player.y = newY;
+            moves++;
+            totalActualMoves++;
+
+            // アイテム取得
+            const itemIndex = items.findIndex(i => i.x === newX && i.y === newY);
+            if (itemIndex !== -1) {
+                collectItem(items[itemIndex]);
+                items.splice(itemIndex, 1);
+            }
+
+            // 鍵取得
+            if (grid[newY][newX] === TILE.KEY) {
+                keys++;
+                grid[newY][newX] = TILE.FLOOR;
+                showMessage('🔑 鍵を入手！', 'good');
+            }
+
+            // ゴール到達
+            if (grid[newY][newX] === TILE.GOAL) {
+                const efficiency = Math.round((optimalMoves / moves) * 100);
+                totalOptimalMoves += optimalMoves;
+                
+                let bonus = 0;
+                let message = '';
+                
+                if (efficiency >= 100) {
+                    bonus += 8;
+                    message = '🌟 完璧！ +8';
+                } else if (efficiency >= 90) {
+                    bonus += 6;
+                    message = '⭐ 優秀！ +6';
+                } else if (efficiency >= 70) {
+                    bonus += 4;
+                    message = '✨ 良好！ +4';
+                } else {
+                    bonus += 2;
+                    message = '✓ クリア！ +2';
+                }
+                
+                energy = Math.min(maxEnergy, energy + bonus);
+                updateEnergy();
+                showMessage(message, 'great');
+                
+                floor++;
+                setTimeout(() => {
+                    if (!gameOver) {
+                        initLevel();
+                        draw();
+                    }
+                }, 1500);
+            }
+            
+            updateStats();
+            draw();
+        }
+
+        // テレポート実行
+        function executeTeléport(targetX, targetY) {
+            if (!teleportMode || portalCharges === 0) return;
+            
+            if (targetX < 0 || targetX >= GRID_SIZE || targetY < 0 || targetY >= GRID_SIZE) return;
+            if (targetX === player.x && targetY === player.y) return;
+            
+            // テレポート先チェック
+            if (boxes.some(b => b.x === targetX && b.y === targetY) ||
+                lockedDoors.some(d => d.x === targetX && d.y === targetY)) {
+                showMessage('⛔ その場所にはテレポートできません', 'warning');
+                return;
+            }
+            
+            saveState();
+            player.x = targetX;
+            player.y = targetY;
+            portalCharges--;
+            moves++;
+            totalActualMoves++;
+            
+            teleportMode = false;
+            document.getElementById('teleport-mode').style.display = 'none';
+            
+            showMessage('🌀 テレポート成功！', 'special');
+            
+            // アイテム取得
+            const itemIndex = items.findIndex(i => i.x === targetX && i.y === targetY);
+            if (itemIndex !== -1) {
+                collectItem(items[itemIndex]);
+                items.splice(itemIndex, 1);
+            }
+            
+            // 鍵取得
+            if (grid[targetY][targetX] === TILE.KEY) {
+                keys++;
+                grid[targetY][targetX] = TILE.FLOOR;
+                showMessage('🔑 鍵を入手！', 'good');
+            }
+            
+            // ゴールチェック
+            if (grid[targetY][targetX] === TILE.GOAL) {
+                const efficiency = Math.round((optimalMoves / moves) * 100);
+                totalOptimalMoves += optimalMoves;
+                
+                let bonus = 0;
+                let message = '';
+                
+                if (efficiency >= 100) {
+                    bonus += 8;
+                    message = '🌟 完璧！ +8';
+                } else if (efficiency >= 90) {
+                    bonus += 6;
+                    message = '⭐ 優秀！ +6';
+                } else if (efficiency >= 70) {
+                    bonus += 4;
+                    message = '✨ 良好！ +4';
+                } else {
+                    bonus += 2;
+                    message = '✓ クリア！ +2';
+                }
+                
+                energy = Math.min(maxEnergy, energy + bonus);
+                updateEnergy();
+                showMessage(message, 'great');
+                
+                floor++;
+                setTimeout(() => {
+                    if (!gameOver) {
+                        initLevel();
+                        draw();
+                    }
+                }, 1500);
+            }
+            
+            updateStats();
+            updateTeleportButton();
+            draw();
+        }
+
+        // キャンバスクリック
+        canvas.addEventListener('click', (e) => {
+            if (!teleportMode || gameOver) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / TILE_SIZE);
+            const y = Math.floor((e.clientY - rect.top) / TILE_SIZE);
+            
+            executeTeléport(x, y);
+        });
+
+        // メッセージ表示
+        function showMessage(text, type) {
+            const msgEl = document.getElementById('message');
+            if (msgEl) {
+                msgEl.textContent = text;
+                msgEl.className = 'message ' + type;
+                
+                if (messageTimeout) clearTimeout(messageTimeout);
+                messageTimeout = setTimeout(() => {
+                    if (msgEl) {
+                        msgEl.textContent = '';
+                        msgEl.className = 'message';
+                    }
+                }, 2000);
+            }
+        }
+
+        // キー入力
+        let keysPressed = {};
+        document.addEventListener('keydown', (e) => {
+            if (gameOver) return;
+            if (keysPressed[e.key]) return;
+            keysPressed[e.key] = true;
+
+            if (teleportMode && e.key.toLowerCase() === 'escape') {
+                teleportMode = false;
+                document.getElementById('teleport-mode').style.display = 'none';
+                showMessage('テレポートキャンセル', 'warning');
+                draw();
+                return;
+            }
+
+            switch(e.key.toLowerCase()) {
+                case 'arrowup':
+                case 'w':
+                    e.preventDefault();
+                    tryMove(0, -1);
+                    break;
+                case 'arrowdown':
+                case 's':
+                    e.preventDefault();
+                    tryMove(0, 1);
+                    break;
+                case 'arrowleft':
+                case 'a':
+                    e.preventDefault();
+                    tryMove(-1, 0);
+                    break;
+                case 'arrowright':
+                case 'd':
+                    e.preventDefault();
+                    tryMove(1, 0);
+                    break;
+                case 'z':
+                    e.preventDefault();
+                    undoMove();
+                    break;
+                case 'r':
+                    e.preventDefault();
+                    resetLevel();
+                    break;
+                case 't':
+                    e.preventDefault();
+                    activateTeleport();
+                    break;
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keysPressed[e.key] = false;
+        });
+
+        // ゲームオーバー
+        function endGame(won) {
+            if (gameOver) return;
+            gameOver = true;
+            
+            if (healInterval) {
+                clearInterval(healInterval);
+                healInterval = null;
+            }
+            
+            document.getElementById('game-over-title').textContent = '⚠ ENERGY DEPLETED ⚠';
+            document.getElementById('game-over-message').textContent = 'システムエネルギー不足';
+            document.getElementById('final-floor').textContent = floor;
+            document.getElementById('final-gems').textContent = gems;
+            
+            const totalEff = totalActualMoves > 0 ? 
+                Math.round((totalOptimalMoves / totalActualMoves) * 100) : 0;
+            document.getElementById('final-efficiency').textContent = totalEff;
+            
+            document.getElementById('game-over').classList.add('show');
+        }
+
+        // ゲーム再開
+        function restartGame() {
+            floor = 1;
+            gems = 0;
+            keys = 0;
+            portalCharges = 0;
+            energy = 100;
+            maxEnergy = 100;
+            gameOver = false;
+            moves = 0;
+            totalOptimalMoves = 0;
+            totalActualMoves = 0;
+            moveHistory = [];
+            keysPressed = {};
+            lastMoveTime = Date.now();
+            teleportMode = false;
+            
+            document.getElementById('game-over').classList.remove('show');
+            document.getElementById('teleport-mode').style.display = 'none';
+            initLevel();
+            updateEnergy();
+            draw();
+        }
+
+        // ゲーム開始
+        initLevel();
+        updateEnergy();
+        draw();
+    </script>
+</body>
+</html>
