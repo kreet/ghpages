@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>サイバー・パスパズル</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1a3e 50%, #0a0e27 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #00ffff;
+            position: relative;
+            overflow: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                repeating-linear-gradient(
+                    0deg,
+                    rgba(0, 255, 255, 0.03) 0px,
+                    transparent 1px,
+                    transparent 2px,
+                    rgba(0, 255, 255, 0.03) 3px
+                );
+            pointer-events: none;
+            animation: scanlines 8s linear infinite;
+        }
+
+        @keyframes scanlines {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(10px); }
+        }
+
+        .game-container {
+            text-align: center;
+            background: rgba(10, 14, 39, 0.9);
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 
+                0 0 30px rgba(0, 255, 255, 0.3),
+                inset 0 0 30px rgba(0, 255, 255, 0.05);
+            border: 2px solid rgba(0, 255, 255, 0.3);
+            position: relative;
+            z-index: 1;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            font-size: 2.2em;
+            text-shadow: 
+                0 0 10px rgba(0, 255, 255, 0.8),
+                0 0 20px rgba(0, 255, 255, 0.5),
+                0 0 30px rgba(0, 255, 255, 0.3);
+            letter-spacing: 3px;
+            color: #00ffff;
+        }
+
+        .info {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            font-size: 1.1em;
+            gap: 15px;
+        }
+
+        .info div {
+            background: rgba(0, 255, 255, 0.1);
+            padding: 10px 20px;
+            border-radius: 5px;
+            min-width: 100px;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+        }
+
+        .energy-container {
+            background: rgba(0, 255, 255, 0.1);
+            border-radius: 5px;
+            padding: 8px 15px;
+            min-width: 180px;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+        }
+
+        .energy-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 3px;
+            margin-top: 5px;
+            overflow: hidden;
+            border: 1px solid rgba(0, 255, 255, 0.5);
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+
+        .energy-fill {
+            height: 100%;
+            background: linear-gradient(90deg, 
+                #ff00ff 0%, 
+                #00ffff 50%, 
+                #00ff00 100%);
+            transition: width 0.3s;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+        }
+
+        .energy-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 11px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px black;
+            pointer-events: none;
+        }
+
+        .optimal-info {
+            margin: 10px 0;
+            font-size: 0.9em;
+            color: #ffff00;
+            background: rgba(255, 255, 0, 0.1);
+            padding: 8px 15px;
+            border-radius: 5px;
+            border: 1px solid rgba(255, 255, 0, 0.3);
+        }
+
+        #game-canvas {
+            background: #000510;
+            border-radius: 5px;
+            display: block;
+            margin: 0 auto;
+            box-shadow: 
+                0 0 20px rgba(0, 255, 255, 0.5),
+                inset 0 0 30px rgba(0, 100, 255, 0.2);
+            border: 2px solid rgba(0, 255, 255, 0.5);
+        }
+
+        .instructions {
+            margin-top: 20px;
+            font-size: 0.9em;
+            opacity: 0.9;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            color: #00ffff;
+        }
+
+        .message {
+            min-height: 35px;
+            font-size: 1.3em;
+            font-weight: bold;
+            margin: 10px 0;
+            text-shadow: 0 0 10px currentColor;
+            letter-spacing: 2px;
+        }
+
+        .message.great {
+            color: #ffff00;
+            animation: glow-yellow 0.5s ease-in-out;
+        }
+
+        .message.good {
+            color: #00ff00;
+            animation: glow-green 0.5s ease-in-out;
+        }
+
+        .message.warning {
+            color: #ff9900;
+            animation: glow-orange 0.5s ease-in-out;
+        }
+
+        .message.bad {
+            color: #ff0066;
+            animation: glow-red 0.5s ease-in-out;
+        }
+
+        @keyframes glow-yellow {
+            0%, 100% { text-shadow: 0 0 10px #ffff00; }
+            50% { text-shadow: 0 0 30px #ffff00, 0 0 50px #ffff00; }
+        }
+
+        @keyframes glow-green {
+            0%, 100% { text-shadow: 0 0 10px #00ff00; }
+            50% { text-shadow: 0 0 30px #00ff00, 0 0 50px #00ff00; }
+        }
+
+        @keyframes glow-orange {
+            0%, 100% { text-shadow: 0 0 10px #ff9900; }
+            50% { text-shadow: 0 0 30px #ff9900, 0 0 50px #ff9900; }
+        }
+
+        @keyframes glow-red {
+            0%, 100% { text-shadow: 0 0 10px #ff0066; }
+            50% { text-shadow: 0 0 30px #ff0066, 0 0 50px #ff0066; }
+        }
+
+        .game-over {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(10, 14, 39, 0.98);
+            padding: 40px;
+            border-radius: 10px;
+            display: none;
+            z-index: 100;
+            border: 3px solid #00ffff;
+            box-shadow: 
+                0 0 50px rgba(0, 255, 255, 0.8),
+                inset 0 0 30px rgba(0, 255, 255, 0.1);
+        }
+
+        .game-over.show {
+            display: block;
+            animation: appear 0.3s ease-out;
+        }
+
+        @keyframes appear {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        .game-over button {
+            margin-top: 20px;
+            padding: 15px 30px;
+            font-size: 1.2em;
+            background: rgba(0, 255, 255, 0.2);
+            border: 2px solid #00ffff;
+            border-radius: 5px;
+            color: #00ffff;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Courier New', monospace;
+            text-shadow: 0 0 10px #00ffff;
+        }
+
+        .game-over button:hover {
+            background: rgba(0, 255, 255, 0.4);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.8);
+            transform: scale(1.05);
+        }
+
+        .legend {
+            margin-top: 15px;
+            font-size: 0.85em;
+            background: rgba(0, 255, 255, 0.05);
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid rgba(0, 255, 255, 0.2);
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 10px 0;
+        }
+
+        .btn {
+            padding: 8px 15px;
+            font-size: 0.9em;
+            background: rgba(0, 255, 255, 0.15);
+            border: 1px solid rgba(0, 255, 255, 0.4);
+            border-radius: 5px;
+            color: #00ffff;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Courier New', monospace;
+        }
+
+        .btn:hover {
+            background: rgba(0, 255, 255, 0.3);
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+        }
+
+        .btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>⚡ CYBER PATH PUZZLE ⚡</h1>
+        
+        <div class="info">
+            <div>LEVEL: <span id="floor">1</span></div>
+            <div>💎 DATA: <span id="gems">0</span></div>
+            <div>🔑 KEY: <span id="keys">0</span></div>
+            <div class="energy-container">
+                ENERGY: <span id="energy-num">100</span>
+                <div class="energy-bar">
+                    <div class="energy-fill" id="energy-fill" style="width: 100%"></div>
+                    <div class="energy-text" id="energy-text">100/100</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="optimal-info">
+            📊 移動数: <span id="moves">0</span> | 最適: <span id="optimal">?</span> | 効率: <span id="efficiency">-</span>
+        </div>
+
+        <div class="controls">
+            <button class="btn" onclick="undoMove()" id="undo-btn" disabled>↶ 戻す (Z)</button>
+            <button class="btn" onclick="resetLevel()">🔄 リセット (R)</button>
+        </div>
+
+        <div class="message" id="message"></div>
+
+        <canvas id="game-canvas" width="480" height="480"></canvas>
+
+        <div class="instructions">
+            <p><strong>⬆️⬇️⬅️➡️ 矢印キーで移動</strong></p>
+            <p>💡 各マスの<span style="color: #ffff00;">数字</span>がエネルギー消費量。効率的なルートを見つけよう！</p>
+            <p>🚪 = ゴール / 🔒 = 要キー / 📦 = 押せるボックス / 💎 = データ (+20エネルギー)</p>
+            <p>🔋 = エネルギーセル (+30) / ⚡ = 充電エリア (消費半減)</p>
+        </div>
+
+        <div class="legend">
+            <p>🤖 = あなた / ⬛ = 壁 / ⭕ = スイッチ (箱で起動)</p>
+            <p>最適ルートを見つけると⭐ボーナス！非効率でも進めるが、エネルギーに注意</p>
+        </div>
+    </div>
+
+    <div class="game-over" id="game-over">
+        <h2 id="game-over-title">SYSTEM HALT</h2>
+        <p id="game-over-message"></p>
+        <p>LEVEL REACHED: <span id="final-floor">0</span></p>
+        <p>DATA COLLECTED: <span id="final-gems">0</span></p>
+        <p>TOTAL EFFICIENCY: <span id="final-efficiency">0</span>%</p>
+        <button onclick="restartGame()">RESTART SYSTEM</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        const TILE_SIZE = 48;
+        const GRID_SIZE = 10;
+
+        // ゲーム状態
+        let player = { x: 1, y: 1 };
+        let floor = 1;
+        let gems = 0;
+        let keys = 0;
+        let energy = 100;
+        let maxEnergy = 100;
+        let gameOver = false;
+        let grid = [];
+        let energyCosts = [];
+        let boxes = [];
+        let switches = [];
+        let lockedDoors = [];
+        let moves = 0;
+        let optimalMoves = 0;
+        let totalOptimalMoves = 0;
+        let totalActualMoves = 0;
+        let moveHistory = [];
+        let animationFrameId = null;
+        let messageTimeout = null;
+
+        // タイル種類
+        const TILE = {
+            EMPTY: 0,
+            WALL: 1,
+            FLOOR: 2,
+            GOAL: 3,
+            GEM: 4,
+            KEY: 5,
+            LOCKED_DOOR: 6,
+            SWITCH: 7,
+            BOX: 8,
+            BATTERY: 9,
+            CHARGE_ZONE: 10
+        };
+
+        // レベルデザイン（最適解を計算しやすいデザイン）
+        const levels = [
+            {
+                grid: [
+                    [1,1,1,1,1,1,1,1,1,1],
+                    [1,2,2,2,1,2,2,2,4,1],
+                    [1,2,1,2,1,2,1,1,2,1],
+                    [1,2,1,2,2,2,2,1,2,1],
+                    [1,2,1,1,1,1,2,1,2,1],
+                    [1,2,2,2,2,2,2,1,2,1],
+                    [1,1,1,2,1,1,1,1,2,1],
+                    [1,2,2,2,2,2,2,2,2,1],
+                    [1,2,1,1,1,1,1,1,3,1],
+                    [1,1,1,1,1,1,1,1,1,1]
+                ],
+                optimal: 22
+            },
+            {
+                grid: [
+                    [1,1,1,1,1,1,1,1,1,1],
+                    [1,2,2,2,1,4,2,9,2,1],
+                    [1,2,1,2,1,1,1,1,2,1],
+                    [1,2,1,2,2,2,2,1,2,1],
+                    [1,5,1,1,6,1,2,1,2,1],
+                    [1,2,2,2,2,1,2,10,2,1],
+                    [1,1,1,1,2,1,1,1,2,1],
+                    [1,4,2,2,2,2,2,2,2,1],
+                    [1,2,1,1,1,1,1,1,3,1],
+                    [1,1,1,1,1,1,1,1,1,1]
+                ],
+                optimal: 28
+            },
+            {
+                grid: [
+                    [1,1,1,1,1,1,1,1,1,1],
+                    [1,2,2,2,2,2,2,4,2,1],
+                    [1,2,1,1,1,1,1,1,2,1],
+                    [1,2,1,7,2,8,2,1,2,1],
+                    [1,2,1,2,1,1,2,1,2,1],
+                    [1,9,1,2,2,2,2,10,2,1],
+                    [1,2,1,1,1,1,1,1,2,1],
+                    [1,4,2,2,2,2,2,2,2,1],
+                    [1,2,2,2,2,2,2,2,3,1],
+                    [1,1,1,1,1,1,1,1,1,1]
+                ],
+                optimal: 35
+            },
+            {
+                grid: [
+                    [1,1,1,1,1,1,1,1,1,1],
+                    [1,2,2,5,1,8,2,7,9,1],
+                    [1,2,1,1,1,1,1,1,2,1],
+                    [1,2,1,4,2,10,2,1,2,1],
+                    [1,2,6,2,1,1,2,1,2,1],
+                    [1,2,1,2,1,8,2,7,2,1],
+                    [1,2,1,2,1,1,1,1,2,1],
+                    [1,4,1,2,2,2,2,2,2,1],
+                    [1,2,2,2,1,1,1,1,3,1],
+                    [1,1,1,1,1,1,1,1,1,1]
+                ],
+                optimal: 42
+            },
+            {
+                grid: [
+                    [1,1,1,1,1,1,1,1,1,1],
+                    [1,2,5,2,1,8,9,7,4,1],
+                    [1,2,1,2,1,1,1,1,2,1],
+                    [1,2,1,10,2,2,2,8,2,1],
+                    [1,2,1,1,6,1,1,1,2,1],
+                    [1,2,2,2,2,2,2,7,9,1],
+                    [1,1,1,1,2,1,1,1,2,1],
+                    [1,4,2,10,2,2,2,2,2,1],
+                    [1,2,1,1,1,1,1,2,3,1],
+                    [1,1,1,1,1,1,1,1,1,1]
+                ],
+                optimal: 45
+            }
+        ];
+
+        // エネルギーコストをランダムに生成
+        function generateEnergyCosts() {
+            energyCosts = [];
+            for (let y = 0; y < GRID_SIZE; y++) {
+                energyCosts[y] = [];
+                for (let x = 0; x < GRID_SIZE; x++) {
+                    if (grid[y][x] === TILE.WALL) {
+                        energyCosts[y][x] = 0;
+                    } else if (grid[y][x] === TILE.CHARGE_ZONE) {
+                        energyCosts[y][x] = 1; // 充電エリアは消費少ない
+                    } else {
+                        // 2-8のランダムなコスト
+                        energyCosts[y][x] = Math.floor(Math.random() * 7) + 2;
+                    }
+                }
+            }
+            // スタート地点は0
+            energyCosts[1][1] = 0;
+        }
+
+        // レベル初期化
+        function initLevel() {
+            if (floor > levels.length) {
+                endGame(true);
+                return;
+            }
+
+            const levelData = levels[floor - 1];
+            grid = JSON.parse(JSON.stringify(levelData.grid));
+            optimalMoves = levelData.optimal;
+            moves = 0;
+            moveHistory = [];
+            
+            generateEnergyCosts();
+            
+            boxes = [];
+            switches = [];
+            lockedDoors = [];
+            player = { x: 1, y: 1 };
+
+            // 特殊タイルを配列に保存
+            for (let y = 0; y < GRID_SIZE; y++) {
+                for (let x = 0; x < GRID_SIZE; x++) {
+                    if (grid[y][x] === TILE.BOX) {
+                        boxes.push({ x, y });
+                        grid[y][x] = TILE.FLOOR;
+                    } else if (grid[y][x] === TILE.SWITCH) {
+                        switches.push({ x, y, active: false });
+                        grid[y][x] = TILE.FLOOR;
+                    } else if (grid[y][x] === TILE.LOCKED_DOOR) {
+                        lockedDoors.push({ x, y });
+                    }
+                }
+            }
+            
+            updateUndoButton();
+            updateStats();
+        }
+
+        // タイル描画
+        function drawTile(x, y, type) {
+            const px = x * TILE_SIZE;
+            const py = y * TILE_SIZE;
+
+            ctx.fillStyle = '#000510';
+            ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+
+            ctx.strokeStyle = 'rgba(0, 255, 255, 0.2)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(px, py, TILE_SIZE, TILE_SIZE);
+
+            ctx.font = '32px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            switch(type) {
+                case TILE.WALL:
+                    ctx.fillStyle = '#001a33';
+                    ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+                    ctx.strokeStyle = '#00ffff';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(px + 2, py + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+                    ctx.fillStyle = 'rgba(0, 255, 255, 0.2)';
+                    ctx.fillRect(px + 4, py + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+                    ctx.fillText('⬛', px + TILE_SIZE/2, py + TILE_SIZE/2);
+                    break;
+                case TILE.FLOOR:
+                    ctx.fillStyle = '#001020';
+                    ctx.fillRect(px + 4, py + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+                    // エネルギーコスト表示
+                    const cost = energyCosts[y][x];
+                    if (cost > 0) {
+                        ctx.font = 'bold 14px Arial';
+                        ctx.fillStyle = cost > 6 ? '#ff6666' : cost > 4 ? '#ffaa66' : '#66ff66';
+                        ctx.fillText(cost, px + TILE_SIZE/2, py + TILE_SIZE/2);
+                    }
+                    break;
+                case TILE.GOAL:
+                    ctx.fillStyle = '#00ff00';
+                    ctx.shadowBlur = 20;
+                    ctx.shadowColor = '#00ff00';
+                    ctx.fillRect(px + 4, py + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+                    ctx.shadowBlur = 0;
+                    ctx.font = '32px Arial';
+                    ctx.fillText('🚪', px + TILE_SIZE/2, py + TILE_SIZE/2);
+                    break;
+                case TILE.GEM:
+                    ctx.fillStyle = '#001020';
+                    ctx.fillRect(px + 4, py + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+                    const gemCost = energyCosts[y][x];
+                    if (gemCost > 0) {
+                        ctx.font = 'bold 14px Arial';
+                        ctx.fillStyle = '#66ff66';
+                        ctx.fillText(gemCost, px + TILE_SIZE/2, py + TILE_SIZE/2 + 12);
+                    }
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = '#00ffff';
+                    ctx.font = '28px Arial';
+                    ctx.fillText('💎', px + TILE_SIZE/2, py + TILE_SIZE/2 - 5);
+                    ctx.shadowBlur = 0;
+                    break;
+                case TILE.KEY:
+                    ctx.fillStyle = '#001020';
+                    ctx.fillRect(px + 4, py + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+                    const keyCost = energyCosts[y][x];
+                    if (keyCost > 0) {
+                        ctx.font = 'bold 14px Arial';
+                        ctx.fillStyle = '#66ff66';
+                        ctx.fillText(keyCost, px + TILE_SIZE/2, py + TILE_SIZE/2 + 12);
+                    }
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = '#ffff00';
+                    ctx.font = '28px Arial';
+                    ctx.fillText('🔑', px + TILE_SIZE/2, py + TILE_SIZE/2 - 5);
+                    ctx.shadowBlur = 0;
+                    break;
+                case TILE.LOCKED_DOOR:
+                    ctx.fillStyle = '#330011';
+                    ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+                    ctx.strokeStyle = '#ff0066';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(px + 2, py + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = '#ff0066';
+                    ctx.font = '32px Arial';
+                    ctx.fillText('🔒', px + TILE_SIZE/2, py + TILE_SIZE/2);
+                    ctx.shadowBlur = 0;
+                    break;
+                case TILE.BATTERY:
+                    ctx.fillStyle = '#001020';
+                    ctx.fillRect(px + 4, py + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+                    const batCost = energyCosts[y][x];
+                    if (batCost > 0) {
+                        ctx.font = 'bold 14px Arial';
+                        ctx.fillStyle = '#66ff66';
+                        ctx.fillText(batCost, px + TILE_SIZE/2, py + TILE_SIZE/2 + 12);
+                    }
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = '#00ff00';
+                    ctx.font = '28px Arial';
+                    ctx.fillText('🔋', px + TILE_SIZE/2, py + TILE_SIZE/2 - 5);
+                    ctx.shadowBlur = 0;
+                    break;
+                case TILE.CHARGE_ZONE:
+                    ctx.fillStyle = '#002200';
+                    ctx.fillRect(px + 4, py + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+                    ctx.strokeStyle = 'rgba(0, 255, 0, 0.5)';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(px + 6, py + 6, TILE_SIZE - 12, TILE_SIZE - 12);
+                    ctx.font = 'bold 14px Arial';
+                    ctx.fillStyle = '#00ff00';
+                    ctx.fillText('1', px + TILE_SIZE/2, py + TILE_SIZE/2 + 8);
+                    ctx.font = '20px Arial';
+                    ctx.fillText('⚡', px + TILE_SIZE/2, py + TILE_SIZE/2 - 8);
+                    break;
+            }
+        }
+
+        // 描画
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#000510';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // グリッド描画
+            for (let y = 0; y < GRID_SIZE; y++) {
+                for (let x = 0; x < GRID_SIZE; x++) {
+                    drawTile(x, y, grid[y][x]);
+                }
+            }
+
+            // スイッチ描画
+            ctx.font = '28px Arial';
+            for (let sw of switches) {
+                const px = sw.x * TILE_SIZE;
+                const py = sw.y * TILE_SIZE;
+                
+                ctx.fillStyle = '#001020';
+                ctx.fillRect(px + 4, py + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+                
+                const swCost = energyCosts[sw.y][sw.x];
+                if (swCost > 0) {
+                    ctx.font = 'bold 14px Arial';
+                    ctx.fillStyle = '#66ff66';
+                    ctx.fillText(swCost, px + TILE_SIZE/2, py + TILE_SIZE/2 + 12);
+                }
+                
+                ctx.fillStyle = sw.active ? '#00ff00' : '#666666';
+                if (sw.active) {
+                    ctx.shadowBlur = 20;
+                    ctx.shadowColor = '#00ff00';
+                }
+                ctx.fillRect(px + 8, py + 8, TILE_SIZE - 16, TILE_SIZE - 16);
+                ctx.shadowBlur = 0;
+                ctx.font = '28px Arial';
+                ctx.fillText('⭕', px + TILE_SIZE/2, py + TILE_SIZE/2 - 5);
+            }
+
+            // ロックされたドア描画
+            for (let door of lockedDoors) {
+                drawTile(door.x, door.y, TILE.LOCKED_DOOR);
+            }
+
+            // 箱描画
+            ctx.font = '32px Arial';
+            for (let box of boxes) {
+                const px = box.x * TILE_SIZE;
+                const py = box.y * TILE_SIZE;
+                ctx.fillStyle = '#1a3344';
+                ctx.fillRect(px + 4, py + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+                ctx.strokeStyle = '#00ffff';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(px + 6, py + 6, TILE_SIZE - 12, TILE_SIZE - 12);
+                ctx.fillText('📦', px + TILE_SIZE/2, py + TILE_SIZE/2);
+            }
+
+            // プレイヤー描画
+            const px = player.x * TILE_SIZE;
+            const py = player.y * TILE_SIZE;
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#00ffff';
+            ctx.fillText('🤖', px + TILE_SIZE/2, py + TILE_SIZE/2);
+            ctx.shadowBlur = 0;
+        }
+
+        // エネルギー更新
+        function updateEnergy() {
+            const energyFill = document.getElementById('energy-fill');
+            const energyNum = document.getElementById('energy-num');
+            const energyText = document.getElementById('energy-text');
+            
+            if (energyFill && energyNum && energyText) {
+                const percent = Math.max(0, (energy / maxEnergy) * 100);
+                energyFill.style.width = percent + '%';
+                energyNum.textContent = energy;
+                energyText.textContent = `${energy}/${maxEnergy}`;
+                
+                // 色の変化
+                if (percent < 20) {
+                    energyFill.style.background = '#ff0066';
+                } else if (percent < 50) {
+                    energyFill.style.background = 'linear-gradient(90deg, #ff6600, #ffff00)';
+                } else {
+                    energyFill.style.background = 'linear-gradient(90deg, #ff00ff, #00ffff, #00ff00)';
+                }
+            }
+            
+            if (energy <= 0 && !gameOver) {
+                endGame(false);
+            }
+        }
+
+        // 統計更新
+        function updateStats() {
+            const movesEl = document.getElementById('moves');
+            const optimalEl = document.getElementById('optimal');
+            const efficiencyEl = document.getElementById('efficiency');
+            
+            if (movesEl) movesEl.textContent = moves;
+            if (optimalEl) optimalEl.textContent = optimalMoves;
+            if (efficiencyEl) {
+                if (moves === 0) {
+                    efficiencyEl.textContent = '-';
+                } else {
+                    const eff = Math.round((optimalMoves / moves) * 100);
+                    efficiencyEl.textContent = eff + '%';
+                    efficiencyEl.style.color = eff >= 90 ? '#00ff00' : eff >= 70 ? '#ffff00' : '#ff6666';
+                }
+            }
+            
+            const floorEl = document.getElementById('floor');
+            const gemsEl = document.getElementById('gems');
+            const keysEl = document.getElementById('keys');
+            
+            if (floorEl) floorEl.textContent = floor;
+            if (gemsEl) gemsEl.textContent = gems;
+            if (keysEl) keysEl.textContent = keys;
+        }
+
+        // 戻すボタンの有効/無効
+        function updateUndoButton() {
+            const undoBtn = document.getElementById('undo-btn');
+            if (undoBtn) {
+                undoBtn.disabled = moveHistory.length === 0;
+            }
+        }
+
+        // 移動を履歴に保存
+        function saveState() {
+            moveHistory.push({
+                player: { ...player },
+                boxes: JSON.parse(JSON.stringify(boxes)),
+                switches: JSON.parse(JSON.stringify(switches)),
+                lockedDoors: JSON.parse(JSON.stringify(lockedDoors)),
+                grid: JSON.parse(JSON.stringify(grid)),
+                gems: gems,
+                keys: keys,
+                energy: energy,
+                moves: moves
+            });
+            
+            // 履歴は最大50手まで
+            if (moveHistory.length > 50) {
+                moveHistory.shift();
+            }
+            
+            updateUndoButton();
+        }
+
+        // 戻す
+        function undoMove() {
+            if (moveHistory.length === 0 || gameOver) return;
+            
+            const state = moveHistory.pop();
+            player = state.player;
+            boxes = state.boxes;
+            switches = state.switches;
+            lockedDoors = state.lockedDoors;
+            grid = state.grid;
+            gems = state.gems;
+            keys = state.keys;
+            energy = state.energy;
+            moves = state.moves;
+            
+            updateStats();
+            updateEnergy();
+            updateUndoButton();
+            draw();
+            
+            showMessage('↶ 移動を戻しました', 'good');
+        }
+
+        // レベルリセット
+        function resetLevel() {
+            if (gameOver) return;
+            
+            moveHistory = [];
+            moves = 0;
+            
+            // エネルギーは少し回復
+            energy = Math.min(maxEnergy, energy + 20);
+            
+            initLevel();
+            draw();
+            
+            showMessage('🔄 レベルをリセット！', 'good');
+        }
+
+        // 移動処理
+        function tryMove(dx, dy) {
+            if (gameOver) return;
+            
+            const newX = player.x + dx;
+            const newY = player.y + dy;
+
+            // 範囲外チェック
+            if (newX < 0 || newX >= GRID_SIZE || newY < 0 || newY >= GRID_SIZE) {
+                return;
+            }
+
+            // 壁チェック
+            if (grid[newY][newX] === TILE.WALL) {
+                showMessage('⬛ 壁です', 'warning');
+                return;
+            }
+
+            // ロックされたドアチェック
+            const doorIndex = lockedDoors.findIndex(d => d.x === newX && d.y === newY);
+            if (doorIndex !== -1) {
+                if (keys > 0) {
+                    saveState();
+                    keys--;
+                    lockedDoors.splice(doorIndex, 1);
+                    showMessage('🔓 ドアを開けました', 'good');
+                    updateStats();
+                    draw();
+                } else {
+                    showMessage('🔑 鍵が必要です', 'warning');
+                }
+                return;
+            }
+
+            // 箱を押す
+            const boxIndex = boxes.findIndex(b => b.x === newX && b.y === newY);
+            if (boxIndex !== -1) {
+                const boxNewX = newX + dx;
+                const boxNewY = newY + dy;
+
+                // 範囲外チェック
+                if (boxNewX < 0 || boxNewX >= GRID_SIZE || boxNewY < 0 || boxNewY >= GRID_SIZE) {
+                    showMessage('📦 箱を押せません', 'warning');
+                    return;
+                }
+
+                // 箱の移動先チェック
+                if (grid[boxNewY][boxNewX] === TILE.WALL || 
+                    boxes.some(b => b.x === boxNewX && b.y === boxNewY) ||
+                    lockedDoors.some(d => d.x === boxNewX && d.y === boxNewY)) {
+                    showMessage('📦 箱を押せません', 'warning');
+                    return;
+                }
+
+                saveState();
+                boxes[boxIndex].x = boxNewX;
+                boxes[boxIndex].y = boxNewY;
+                
+                // エネルギー消費（箱を押すのは2倍）
+                const moveCost = energyCosts[newY][newX] * 2;
+                energy = Math.max(0, energy - moveCost);
+                updateEnergy();
+                
+                showMessage(`📦 箱を押した！ -${moveCost} エネルギー`, 'good');
+            } else {
+                // 通常の移動
+                saveState();
+                
+                // エネルギー消費
+                const moveCost = energyCosts[newY][newX];
+                energy = Math.max(0, energy - moveCost);
+                updateEnergy();
+            }
+
+            // プレイヤー移動
+            player.x = newX;
+            player.y = newY;
+            moves++;
+            totalActualMoves++;
+
+            // アイテム取得
+            if (grid[newY][newX] === TILE.GEM) {
+                gems++;
+                grid[newY][newX] = TILE.FLOOR;
+                energy = Math.min(maxEnergy, energy + 20);
+                updateEnergy();
+                showMessage('💎 データ取得！ +20 エネルギー', 'great');
+            } else if (grid[newY][newX] === TILE.KEY) {
+                keys++;
+                grid[newY][newX] = TILE.FLOOR;
+                showMessage('🔑 鍵を入手！', 'good');
+            } else if (grid[newY][newX] === TILE.BATTERY) {
+                grid[newY][newX] = TILE.FLOOR;
+                energy = Math.min(maxEnergy, energy + 30);
+                updateEnergy();
+                showMessage('🔋 充電！ +30 エネルギー', 'great');
+            } else if (grid[newY][newX] === TILE.GOAL) {
+                const allSwitchesActive = switches.length === 0 || switches.every(s => s.active);
+                if (allSwitchesActive) {
+                    const efficiency = Math.round((optimalMoves / moves) * 100);
+                    totalOptimalMoves += optimalMoves;
+                    
+                    // 効率ボーナス
+                    let bonus = 0;
+                    if (efficiency >= 100) {
+                        bonus = 40;
+                        showMessage('🌟 最適解！ +40 エネルギー', 'great');
+                    } else if (efficiency >= 90) {
+                        bonus = 30;
+                        showMessage('⭐ 優秀！ +30 エネルギー', 'great');
+                    } else if (efficiency >= 70) {
+                        bonus = 20;
+                        showMessage('✨ 良好！ +20 エネルギー', 'good');
+                    } else {
+                        bonus = 10;
+                        showMessage('✓ クリア！ +10 エネルギー', 'good');
+                    }
+                    
+                    energy = Math.min(maxEnergy, energy + bonus);
+                    updateEnergy();
+                    
+                    floor++;
+                    setTimeout(() => {
+                        if (!gameOver) {
+                            initLevel();
+                            draw();
+                        }
+                    }, 1500);
+                } else {
+                    showMessage('⭕ すべてのスイッチを起動！', 'warning');
+                }
+            }
+
+            // スイッチ判定
+            for (let sw of switches) {
+                sw.active = boxes.some(b => b.x === sw.x && b.y === sw.y);
+            }
+            
+            updateStats();
+            draw();
+        }
+
+        // メッセージ表示
+        function showMessage(text, type) {
+            const msgEl = document.getElementById('message');
+            if (msgEl) {
+                msgEl.textContent = text;
+                msgEl.className = 'message ' + type;
+                
+                if (messageTimeout) {
+                    clearTimeout(messageTimeout);
+                }
+                
+                messageTimeout = setTimeout(() => {
+                    if (msgEl) {
+                        msgEl.textContent = '';
+                        msgEl.className = 'message';
+                    }
+                }, 2000);
+            }
+        }
+
+        // キー入力
+        let keysPressed = {};
+        document.addEventListener('keydown', (e) => {
+            if (gameOver) return;
+            if (keysPressed[e.key]) return;
+            
+            keysPressed[e.key] = true;
+
+            switch(e.key.toLowerCase()) {
+                case 'arrowup':
+                case 'w':
+                    e.preventDefault();
+                    tryMove(0, -1);
+                    break;
+                case 'arrowdown':
+                case 's':
+                    e.preventDefault();
+                    tryMove(0, 1);
+                    break;
+                case 'arrowleft':
+                case 'a':
+                    e.preventDefault();
+                    tryMove(-1, 0);
+                    break;
+                case 'arrowright':
+                case 'd':
+                    e.preventDefault();
+                    tryMove(1, 0);
+                    break;
+                case 'z':
+                    e.preventDefault();
+                    undoMove();
+                    break;
+                case 'r':
+                    e.preventDefault();
+                    resetLevel();
+                    break;
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keysPressed[e.key] = false;
+        });
+
+        // ゲームオーバー
+        function endGame(won) {
+            if (gameOver) return;
+            
+            gameOver = true;
+            
+            const title = document.getElementById('game-over-title');
+            const message = document.getElementById('game-over-message');
+            
+            if (title && message) {
+                if (won) {
+                    title.textContent = '⚡ SYSTEM COMPLETE ⚡';
+                    message.textContent = 'ALL LEVELS CLEARED!';
+                } else {
+                    title.textContent = '⚠ ENERGY DEPLETED ⚠';
+                    message.textContent = 'エネルギー不足';
+                }
+            }
+            
+            const finalFloor = document.getElementById('final-floor');
+            const finalGems = document.getElementById('final-gems');
+            const finalEfficiency = document.getElementById('final-efficiency');
+            
+            if (finalFloor) finalFloor.textContent = floor;
+            if (finalGems) finalGems.textContent = gems;
+            if (finalEfficiency) {
+                const totalEff = totalActualMoves > 0 ? 
+                    Math.round((totalOptimalMoves / totalActualMoves) * 100) : 0;
+                finalEfficiency.textContent = totalEff;
+            }
+            
+            const gameOverEl = document.getElementById('game-over');
+            if (gameOverEl) {
+                gameOverEl.classList.add('show');
+            }
+        }
+
+        // ゲーム再開
+        function restartGame() {
+            floor = 1;
+            gems = 0;
+            keys = 0;
+            energy = 100;
+            gameOver = false;
+            moves = 0;
+            totalOptimalMoves = 0;
+            totalActualMoves = 0;
+            moveHistory = [];
+            keysPressed = {};
+            
+            const gameOverEl = document.getElementById('game-over');
+            if (gameOverEl) {
+                gameOverEl.classList.remove('show');
+            }
+            
+            initLevel();
+            updateEnergy();
+            draw();
+        }
+
+        // ゲーム開始
+        initLevel();
+        updateEnergy();
+        draw();
+    </script>
+</body>
+</html>
