@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>クリックゲーム</title>
+<style>
+body{margin:0;display:flex;justify-content:center;align-items:center;height:100vh;background:#222;color:#fff;font-family:sans-serif;flex-direction:column}
+#btn{font-size:48px;padding:30px 60px;cursor:pointer;background:#4CAF50;border:none;border-radius:10px;color:#fff;transition:transform 0.1s}
+#btn:active{transform:scale(0.95)}
+#score{font-size:32px;margin-bottom:20px}
+#cps{font-size:18px;color:#888;margin-top:10px}
+</style>
+</head>
+<body>
+<div id="score">0</div>
+<button id="btn">クリック!</button>
+<div id="cps">0 CPS</div>
+<script>
+let s=0,c=0,t=Date.now();
+btn.onclick=()=>{
+  score.textContent=++s;
+  c++;
+  let n=Date.now();
+  if(n-t>1000){cps.textContent=c+' CPS';c=0;t=n;}
+};
+</script>
+</body>
+</html>
