@@ -19,16 +19,42 @@
             align-items: center;
             min-height: 100vh;
             overflow: hidden;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 255, 255, 0.03) 2px,
+                rgba(0, 255, 255, 0.03) 4px
+            );
+            pointer-events: none;
+            animation: scanlines 8s linear infinite;
+        }
+
+        @keyframes scanlines {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(20px); }
         }
 
         #gameContainer {
-            background: rgba(10, 10, 30, 0.9);
+            background: rgba(10, 10, 30, 0.95);
             border: 3px solid #00ffff;
             border-radius: 15px;
             padding: 30px;
             box-shadow: 0 0 40px rgba(0, 255, 255, 0.5), inset 0 0 20px rgba(0, 255, 255, 0.1);
             max-width: 900px;
             width: 95%;
+            position: relative;
+            z-index: 1;
         }
 
         h1 {
@@ -102,7 +128,7 @@
             background: linear-gradient(135deg, #00ffff 0%, #0099ff 100%);
             border-radius: 50%;
             box-shadow: 0 0 30px #00ffff, inset 0 0 10px rgba(255, 255, 255, 0.5);
-            transition: transform 0.1s;
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
             z-index: 10;
         }
 
@@ -137,6 +163,24 @@
             border-radius: 10px;
             box-shadow: 0 0 20px #ff0066;
             animation: moveObstacle 3s linear;
+        }
+
+        .obstacle::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 30px;
+            height: 30px;
+            background: #ff0066;
+            clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+            animation: rotateObstacle 1s linear infinite;
+        }
+
+        @keyframes rotateObstacle {
+            from { transform: translate(-50%, -50%) rotate(0deg); }
+            to { transform: translate(-50%, -50%) rotate(360deg); }
         }
 
         @keyframes moveObstacle {
@@ -179,12 +223,13 @@
             left: 50%;
             transform: translateX(-50%);
             width: 80%;
-            height: 60px;
-            background: rgba(0, 20, 40, 0.8);
+            height: 80px;
+            background: rgba(0, 20, 40, 0.9);
             border: 3px solid #00ffff;
-            border-radius: 30px;
-            overflow: hidden;
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5), inset 0 0 15px rgba(0, 255, 255, 0.2);
+            border-radius: 15px;
+            overflow: visible;
+            box-shadow: 0 0 25px rgba(0, 255, 255, 0.6), inset 0 0 20px rgba(0, 255, 255, 0.2);
+            z-index: 20;
         }
 
         #rhythmProgress {
@@ -193,43 +238,55 @@
             top: 0;
             width: 0%;
             height: 100%;
-            background: linear-gradient(90deg, #00ff00 0%, #00ffff 50%, #00ff00 100%);
-            box-shadow: 0 0 20px #00ffff;
-            animation: rhythmFlow 2s linear infinite;
-        }
-
-        @keyframes rhythmFlow {
-            0% {
-                width: 0%;
-            }
-            100% {
-                width: 100%;
-            }
+            background: linear-gradient(90deg, #00ff00 0%, #00ffff 50%, #ffff00 100%);
+            box-shadow: 0 0 25px currentColor;
+            transition: width 0.05s linear;
         }
 
         .beat-zone {
             position: absolute;
             top: 0;
-            right: 15%;
-            width: 15%;
+            right: 10%;
+            width: 20%;
             height: 100%;
-            background: rgba(255, 255, 0, 0.3);
-            border-left: 3px solid #ffff00;
-            border-right: 3px solid #ffff00;
-            box-shadow: inset 0 0 20px rgba(255, 255, 0, 0.5);
+            background: rgba(255, 255, 0, 0.4);
+            border-left: 4px solid #ffff00;
+            border-right: 4px solid #ffff00;
+            box-shadow: inset 0 0 25px rgba(255, 255, 0, 0.6);
+            animation: beatZonePulse 0.5s ease-in-out infinite;
+        }
+
+        @keyframes beatZonePulse {
+            0%, 100% {
+                background: rgba(255, 255, 0, 0.3);
+            }
+            50% {
+                background: rgba(255, 255, 0, 0.5);
+            }
         }
 
         #beatMarker {
             position: absolute;
             top: 50%;
-            right: 22.5%;
+            right: 20%;
             transform: translateY(-50%);
-            width: 20px;
-            height: 40px;
+            width: 25px;
+            height: 60px;
             background: #ffff00;
-            border-radius: 5px;
-            box-shadow: 0 0 15px #ffff00;
+            border-radius: 8px;
+            box-shadow: 0 0 20px #ffff00, inset 0 0 10px rgba(255, 255, 255, 0.5);
             animation: markerBlink 0.5s ease-in-out infinite;
+            z-index: 10;
+        }
+
+        #beatMarker::before {
+            content: '⚡';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.5em;
+            color: #000;
         }
 
         @keyframes markerBlink {
@@ -238,8 +295,41 @@
                 transform: translateY(-50%) scale(1);
             }
             50% {
-                opacity: 0.6;
-                transform: translateY(-50%) scale(1.2);
+                opacity: 0.7;
+                transform: translateY(-50%) scale(1.15);
+            }
+        }
+
+        #beatCounter {
+            position: absolute;
+            top: -35px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #ffff00;
+            text-shadow: 0 0 15px #ffff00;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .beat-flash {
+            animation: beatFlash 0.2s ease-out;
+        }
+
+        @keyframes beatFlash {
+            0% {
+                transform: translateX(-50%) scale(1);
+                color: #ffff00;
+            }
+            50% {
+                transform: translateX(-50%) scale(1.5);
+                color: #ffffff;
+                text-shadow: 0 0 30px #ffff00;
+            }
+            100% {
+                transform: translateX(-50%) scale(1);
+                color: #ffff00;
             }
         }
 
@@ -263,13 +353,13 @@
             margin: 5px;
         }
 
-        button:hover {
+        button:hover:not(:disabled) {
             background: linear-gradient(135deg, #0099ff 0%, #00ccff 100%);
             box-shadow: 0 0 30px rgba(0, 255, 255, 0.8);
             transform: translateY(-2px);
         }
 
-        button:active {
+        button:active:not(:disabled) {
             transform: translateY(0);
         }
 
@@ -329,6 +419,27 @@
             }
         }
 
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #00ffff;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: particleFloat 2s ease-out forwards;
+        }
+
+        @keyframes particleFloat {
+            0% {
+                opacity: 1;
+                transform: translate(0, 0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(var(--tx), var(--ty)) scale(0);
+            }
+        }
+
         #instructions {
             background: rgba(0, 50, 80, 0.6);
             border: 2px solid #00ccff;
@@ -363,10 +474,33 @@
             left: 0;
             color: #00ffff;
         }
+
+        .sound-toggle {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(0, 100, 150, 0.5);
+            border: 2px solid #00ccff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1.2em;
+            transition: all 0.3s;
+        }
+
+        .sound-toggle:hover {
+            background: rgba(0, 150, 200, 0.7);
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+        }
     </style>
 </head>
 <body>
     <div id="gameContainer">
+        <div class="sound-toggle" onclick="toggleSound()" title="音声ON/OFF">🔊</div>
         <h1>⚡ CYBER RHYTHM RUNNER ⚡</h1>
         
         <div id="stats">
@@ -392,6 +526,7 @@
 
         <div id="gameScreen">
             <div id="rhythmBar">
+                <div id="beatCounter">3</div>
                 <div id="rhythmProgress"></div>
                 <div class="beat-zone"></div>
                 <div id="beatMarker"></div>
@@ -407,11 +542,11 @@
         <div id="instructions">
             <h3>📡 HOW TO PLAY</h3>
             <ul>
-                <li><strong>リズムバー</strong>（画面上部）の緑のゲージが黄色いゾーンに入ったタイミングでJUMPしよう！</li>
-                <li><strong>黄色いマーカー</strong>が最適なタイミングを示しています</li>
-                <li><strong>完璧なタイミング</strong>で障害物を避けると高得点＆コンボ継続！</li>
-                <li>ミスするとコンボがリセットされます</li>
-                <li>レベルが上がると難易度UP！</li>
+                <li><strong>画面上部のカウントダウン</strong>を見て、<strong>「0」になる瞬間</strong>にJUMPしよう！</li>
+                <li><strong>緑のゲージ</strong>が<strong>黄色いゾーン（右端）</strong>に到達したタイミングがベスト！</li>
+                <li><strong>黄色いマーカー⚡</strong>の位置で押すと完璧なタイミング！</li>
+                <li>リズムに合わせてビープ音が鳴ります（音声ON時）</li>
+                <li>完璧なタイミングで障害物を避けると高得点＆コンボ継続！</li>
             </ul>
         </div>
     </div>
@@ -422,13 +557,63 @@
         let level = 1;
         let isPlaying = false;
         let obstacleInterval;
-        let beatInterval;
+        let rhythmInterval;
         let obstacles = [];
         let totalAttempts = 0;
         let perfectHits = 0;
         let goodHits = 0;
-        let rhythmCycle = 0;
-        let beatDuration = 2000; // 2秒で1サイクル
+        let beatDuration = 2000;
+        let currentBeatStartTime = 0;
+        let soundEnabled = true;
+        
+        // Web Audio API
+        let audioContext;
+        
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+        
+        function playBeep(frequency = 800, duration = 0.1) {
+            if (!soundEnabled || !audioContext) return;
+            
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = frequency;
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + duration);
+        }
+        
+        function playJumpSound(timing) {
+            if (timing === 'perfect') {
+                playBeep(1200, 0.15);
+                setTimeout(() => playBeep(1600, 0.1), 80);
+            } else if (timing === 'good') {
+                playBeep(900, 0.12);
+            } else {
+                playBeep(300, 0.2);
+            }
+        }
+        
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            const toggle = document.querySelector('.sound-toggle');
+            toggle.textContent = soundEnabled ? '🔊' : '🔇';
+            
+            if (soundEnabled) {
+                initAudio();
+            }
+        }
 
         const gameScreen = document.getElementById('gameScreen');
         const player = document.getElementById('player');
@@ -440,8 +625,9 @@
         const startBtn = document.getElementById('startBtn');
         const jumpBtn = document.getElementById('jumpBtn');
         const rhythmProgress = document.getElementById('rhythmProgress');
+        const beatCounter = document.getElementById('beatCounter');
 
-        // グリッドライン追加（未来的な演出）
+        // グリッドライン追加
         for (let i = 0; i < 5; i++) {
             const line = document.createElement('div');
             line.className = 'grid-line';
@@ -450,26 +636,68 @@
             gameScreen.appendChild(line);
         }
 
-        // リズムバーのアニメーション更新
+        // パーティクルエフェクト
+        function createParticles(x, y, color = '#00ffff', count = 8) {
+            for (let i = 0; i < count; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = x + 'px';
+                particle.style.top = y + 'px';
+                particle.style.background = color;
+                
+                const angle = (Math.PI * 2 * i) / count;
+                const distance = 50 + Math.random() * 50;
+                const tx = Math.cos(angle) * distance;
+                const ty = Math.sin(angle) * distance;
+                
+                particle.style.setProperty('--tx', tx + 'px');
+                particle.style.setProperty('--ty', ty + 'px');
+                
+                gameScreen.appendChild(particle);
+                
+                setTimeout(() => particle.remove(), 2000);
+            }
+        }
+
+        // リズムバーの更新
         function updateRhythmBar() {
             if (!isPlaying) return;
             
-            const startTime = Date.now();
+            currentBeatStartTime = Date.now();
+            rhythmProgress.style.transition = 'none';
+            rhythmProgress.style.width = '0%';
             
-            function animate() {
-                if (!isPlaying) {
-                    rhythmProgress.style.width = '0%';
-                    return;
+            setTimeout(() => {
+                rhythmProgress.style.transition = `width ${beatDuration}ms linear`;
+                rhythmProgress.style.width = '100%';
+            }, 50);
+            
+            updateBeatCounter();
+        }
+
+        // ビートカウンター更新
+        function updateBeatCounter() {
+            let count = 3;
+            beatCounter.textContent = count;
+            beatCounter.classList.add('beat-flash');
+            
+            const counterInterval = setInterval(() => {
+                count--;
+                if (count >= 0) {
+                    beatCounter.textContent = count;
+                    beatCounter.classList.remove('beat-flash');
+                    setTimeout(() => beatCounter.classList.add('beat-flash'), 10);
+                    
+                    // カウントダウン音
+                    if (count === 0) {
+                        playBeep(1000, 0.15);
+                    } else {
+                        playBeep(600, 0.1);
+                    }
+                } else {
+                    clearInterval(counterInterval);
                 }
-                
-                const elapsed = Date.now() - startTime;
-                const progress = (elapsed % beatDuration) / beatDuration * 100;
-                rhythmProgress.style.width = progress + '%';
-                
-                requestAnimationFrame(animate);
-            }
-            
-            animate();
+            }, beatDuration / 4);
         }
 
         // ビートインジケーター表示
@@ -485,14 +713,14 @@
 
         // ビートのタイミングチェック
         function checkBeatTiming() {
-            const elapsed = Date.now() % beatDuration;
+            const elapsed = Date.now() - currentBeatStartTime;
             const normalizedTime = elapsed / beatDuration;
             
-            // 黄色いゾーンは85%～100%の位置（右端15%）
-            // 完璧なタイミングは90%～95%（マーカー位置）
-            if (normalizedTime >= 0.90 && normalizedTime <= 0.95) {
+            // 黄色いゾーンは80%～100%の位置
+            // 完璧なタイミングは85%～95%（マーカー位置）
+            if (normalizedTime >= 0.85 && normalizedTime <= 0.95) {
                 return 'perfect';
-            } else if (normalizedTime >= 0.85 && normalizedTime <= 1.0) {
+            } else if (normalizedTime >= 0.75 && normalizedTime <= 1.0) {
                 return 'good';
             } else {
                 return 'miss';
@@ -506,26 +734,35 @@
             const timing = checkBeatTiming();
             
             // ジャンプアニメーション
-            player.style.transform = 'translateY(-80px) scale(1.1)';
+            player.style.transform = 'translateY(-100px) scale(1.2)';
             setTimeout(() => {
                 player.style.transform = 'translateY(0) scale(1)';
-            }, 300);
+            }, 400);
 
             // タイミング評価
+            playJumpSound(timing);
+            
+            const playerRect = player.getBoundingClientRect();
+            const particleX = playerRect.left + playerRect.width / 2 - gameScreen.getBoundingClientRect().left;
+            const particleY = playerRect.top + playerRect.height / 2 - gameScreen.getBoundingClientRect().top;
+            
             if (timing === 'perfect') {
                 perfectHits++;
                 score += 100 * level;
                 combo++;
                 showMessage('⚡ PERFECT! ⚡', 'perfect');
                 showBeatIndicator();
+                createParticles(particleX, particleY, '#ffff00', 12);
             } else if (timing === 'good') {
                 goodHits++;
                 score += 50 * level;
                 combo++;
                 showMessage('✓ GOOD!', 'good');
+                createParticles(particleX, particleY, '#00ff00', 8);
             } else {
                 combo = 0;
                 showMessage('✗ MISS!', 'miss');
+                createParticles(particleX, particleY, '#ff0066', 6);
             }
 
             updateDisplay();
@@ -536,7 +773,7 @@
             const obstacle = document.createElement('div');
             obstacle.className = 'obstacle';
             
-            const obstacleSpeed = Math.max(2000, 3000 - (level * 200));
+            const obstacleSpeed = Math.max(1800, 3000 - (level * 200));
             obstacle.style.animation = `moveObstacle ${obstacleSpeed}ms linear`;
             
             gameScreen.appendChild(obstacle);
@@ -554,7 +791,7 @@
         }
 
         function checkCollision(obstacle) {
-            if (!isPlaying) return;
+            if (!isPlaying || !obstacle.parentElement) return;
             
             const obstacleRect = obstacle.getBoundingClientRect();
             const playerRect = player.getBoundingClientRect();
@@ -589,8 +826,8 @@
             if (newLevel > level) {
                 level = newLevel;
                 showMessage(`🚀 LEVEL ${level} UNLOCKED! 🚀`, 'perfect');
+                playBeep(1500, 0.2);
                 
-                // レベルアップ時に障害物生成速度を上げる
                 clearInterval(obstacleInterval);
                 const spawnRate = Math.max(1200, 2000 - (level * 150));
                 obstacleInterval = setInterval(createObstacle, spawnRate);
@@ -598,6 +835,7 @@
         }
 
         function startGame() {
+            initAudio();
             isPlaying = true;
             score = 0;
             combo = 0;
@@ -617,13 +855,21 @@
             
             updateRhythmBar();
             
+            rhythmInterval = setInterval(() => {
+                if (isPlaying) {
+                    updateRhythmBar();
+                }
+            }, beatDuration);
+            
             obstacleInterval = setInterval(createObstacle, 2000);
         }
 
         function gameOver() {
             isPlaying = false;
             clearInterval(obstacleInterval);
-            clearInterval(beatInterval);
+            clearInterval(rhythmInterval);
+            
+            playBeep(200, 0.5);
             
             showMessage(`💥 GAME OVER! Final Score: ${score} 💥`, 'miss');
             
@@ -632,6 +878,10 @@
             
             obstacles.forEach(obs => obs.element.remove());
             obstacles = [];
+            
+            rhythmProgress.style.transition = 'none';
+            rhythmProgress.style.width = '0%';
+            beatCounter.textContent = '0';
         }
 
         // キーボード操作
@@ -640,7 +890,7 @@
                 e.preventDefault();
                 if (isPlaying) {
                     jump();
-                } else {
+                } else if (!startBtn.disabled) {
                     startGame();
                 }
             }
