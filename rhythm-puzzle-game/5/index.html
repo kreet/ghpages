@@ -1,0 +1,1060 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>サイバー・リズムパズル</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1a3e 50%, #0a0e27 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #00ffff;
+            position: relative;
+            overflow: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                repeating-linear-gradient(
+                    0deg,
+                    rgba(0, 255, 255, 0.03) 0px,
+                    transparent 1px,
+                    transparent 2px,
+                    rgba(0, 255, 255, 0.03) 3px
+                );
+            pointer-events: none;
+            animation: scanlines 8s linear infinite;
+        }
+
+        @keyframes scanlines {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(10px); }
+        }
+
+        .game-container {
+            text-align: center;
+            background: rgba(10, 14, 39, 0.9);
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 
+                0 0 30px rgba(0, 255, 255, 0.3),
+                inset 0 0 30px rgba(0, 255, 255, 0.05);
+            border: 2px solid rgba(0, 255, 255, 0.3);
+            position: relative;
+            z-index: 1;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            font-size: 2.2em;
+            text-shadow: 
+                0 0 10px rgba(0, 255, 255, 0.8),
+                0 0 20px rgba(0, 255, 255, 0.5),
+                0 0 30px rgba(0, 255, 255, 0.3);
+            letter-spacing: 3px;
+            color: #00ffff;
+        }
+
+        .info {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            font-size: 1.1em;
+            gap: 15px;
+        }
+
+        .info div {
+            background: rgba(0, 255, 255, 0.1);
+            padding: 10px 20px;
+            border-radius: 5px;
+            min-width: 100px;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+        }
+
+        .hp-bar-container {
+            background: rgba(0, 255, 255, 0.1);
+            border-radius: 5px;
+            padding: 8px 15px;
+            min-width: 150px;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+        }
+
+        .hp-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 3px;
+            margin-top: 5px;
+            overflow: hidden;
+            border: 1px solid rgba(0, 255, 255, 0.5);
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .hp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, 
+                #ff00ff 0%, 
+                #00ffff 50%, 
+                #00ff00 100%);
+            transition: width 0.3s;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+            animation: pulse-hp 1s ease-in-out infinite;
+        }
+
+        @keyframes pulse-hp {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        #game-canvas {
+            background: #000510;
+            border-radius: 5px;
+            display: block;
+            margin: 0 auto;
+            box-shadow: 
+                0 0 20px rgba(0, 255, 255, 0.5),
+                inset 0 0 30px rgba(0, 100, 255, 0.2);
+            border: 2px solid rgba(0, 255, 255, 0.5);
+        }
+
+        .instructions {
+            margin-top: 20px;
+            font-size: 0.9em;
+            opacity: 0.9;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            color: #00ffff;
+        }
+
+        .message {
+            min-height: 35px;
+            font-size: 1.4em;
+            font-weight: bold;
+            margin: 10px 0;
+            text-shadow: 0 0 10px currentColor;
+            letter-spacing: 2px;
+        }
+
+        .message.perfect {
+            color: #ffff00;
+            animation: glow-yellow 0.5s ease-in-out;
+        }
+
+        .message.good {
+            color: #00ff00;
+            animation: glow-green 0.5s ease-in-out;
+        }
+
+        .message.miss {
+            color: #ff0066;
+            animation: glow-red 0.5s ease-in-out;
+        }
+
+        @keyframes glow-yellow {
+            0%, 100% { text-shadow: 0 0 10px #ffff00; }
+            50% { text-shadow: 0 0 30px #ffff00, 0 0 50px #ffff00; }
+        }
+
+        @keyframes glow-green {
+            0%, 100% { text-shadow: 0 0 10px #00ff00; }
+            50% { text-shadow: 0 0 30px #00ff00, 0 0 50px #00ff00; }
+        }
+
+        @keyframes glow-red {
+            0%, 100% { text-shadow: 0 0 10px #ff0066; }
+            50% { text-shadow: 0 0 30px #ff0066, 0 0 50px #ff0066; }
+        }
+
+        .game-over {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(10, 14, 39, 0.98);
+            padding: 40px;
+            border-radius: 10px;
+            display: none;
+            z-index: 100;
+            border: 3px solid #00ffff;
+            box-shadow: 
+                0 0 50px rgba(0, 255, 255, 0.8),
+                inset 0 0 30px rgba(0, 255, 255, 0.1);
+        }
+
+        .game-over.show {
+            display: block;
+            animation: appear 0.3s ease-out;
+        }
+
+        @keyframes appear {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        .game-over button {
+            margin-top: 20px;
+            padding: 15px 30px;
+            font-size: 1.2em;
+            background: rgba(0, 255, 255, 0.2);
+            border: 2px solid #00ffff;
+            border-radius: 5px;
+            color: #00ffff;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Courier New', monospace;
+            text-shadow: 0 0 10px #00ffff;
+        }
+
+        .game-over button:hover {
+            background: rgba(0, 255, 255, 0.4);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.8);
+            transform: scale(1.05);
+        }
+
+        .legend {
+            margin-top: 15px;
+            font-size: 0.85em;
+            background: rgba(0, 255, 255, 0.05);
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid rgba(0, 255, 255, 0.2);
+        }
+
+        .rhythm-info {
+            font-size: 1em;
+            margin-bottom: 15px;
+            color: #ffff00;
+            text-shadow: 0 0 10px #ffff00;
+            font-weight: bold;
+        }
+
+        .timing-bar-container {
+            width: 480px;
+            height: 40px;
+            margin: 10px auto;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(0, 255, 255, 0.5);
+            border-radius: 5px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .timing-zones {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+        }
+
+        .zone-miss {
+            flex: 3;
+            background: rgba(255, 0, 102, 0.2);
+        }
+
+        .zone-good {
+            flex: 1;
+            background: rgba(0, 255, 0, 0.3);
+            border-left: 2px solid rgba(0, 255, 0, 0.5);
+            border-right: 2px solid rgba(0, 255, 0, 0.5);
+        }
+
+        .zone-perfect {
+            flex: 0.5;
+            background: rgba(255, 255, 0, 0.4);
+            border-left: 2px solid rgba(255, 255, 0, 0.8);
+            border-right: 2px solid rgba(255, 255, 0, 0.8);
+            box-shadow: 0 0 20px rgba(255, 255, 0, 0.5);
+        }
+
+        .timing-indicator {
+            position: absolute;
+            width: 4px;
+            height: 100%;
+            background: #ffffff;
+            box-shadow: 
+                0 0 10px #ffffff,
+                0 0 20px #00ffff;
+            transition: left 0.05s linear;
+        }
+
+        .zone-labels {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            font-size: 0.7em;
+            font-weight: bold;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>⚡ CYBER RHYTHM PUZZLE ⚡</h1>
+        
+        <div class="info">
+            <div>LEVEL: <span id="floor">1</span></div>
+            <div>💎 DATA: <span id="gems">0</span></div>
+            <div>🔑 KEY: <span id="keys">0</span></div>
+            <div class="hp-bar-container">
+                ENERGY
+                <div class="hp-bar">
+                    <div class="hp-fill" id="hp-fill" style="width: 100%"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="message" id="message"></div>
+        <div class="rhythm-info">⚡ タイミングゲージに合わせて移動！ ⚡</div>
+
+        <div class="timing-bar-container">
+            <div class="timing-zones">
+                <div class="zone-miss"></div>
+                <div class="zone-good"></div>
+                <div class="zone-perfect"></div>
+                <div class="zone-good"></div>
+                <div class="zone-miss"></div>
+            </div>
+            <div class="zone-labels">
+                <span style="color: #ff0066;">MISS</span>
+                <span style="color: #00ff00;">GOOD</span>
+                <span style="color: #ffff00;">PERFECT</span>
+                <span style="color: #00ff00;">GOOD</span>
+                <span style="color: #ff0066;">MISS</span>
+            </div>
+            <div class="timing-indicator" id="timing-indicator"></div>
+        </div>
+
+        <canvas id="game-canvas" width="480" height="480"></canvas>
+
+        <div class="instructions">
+            <p><strong>⬆️⬇️⬅️➡️ 矢印キーで移動</strong></p>
+            <p>タイミングゲージが<span style="color: #ffff00;">中央（PERFECT）</span>の時に移動すると最高！</p>
+            <p>🚪 = ゴール / 🔒 = 要キー / 📦 = 押せるボックス / 💎 = データ</p>
+        </div>
+
+        <div class="legend">
+            <p>🤖 = あなた / ⬛ = 壁 / ⭕ = スイッチ</p>
+            <p>⚡ PERFECT: +1 ENERGY / ✓ GOOD: OK / ✗ MISS: -5 ENERGY</p>
+        </div>
+    </div>
+
+    <div class="game-over" id="game-over">
+        <h2 id="game-over-title">SYSTEM HALT</h2>
+        <p id="game-over-message"></p>
+        <p>LEVEL REACHED: <span id="final-floor">0</span></p>
+        <p>DATA COLLECTED: <span id="final-gems">0</span></p>
+        <button onclick="restartGame()">RESTART SYSTEM</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        const TILE_SIZE = 48;
+        const GRID_SIZE = 10;
+
+        // ゲーム状態
+        let player = { x: 1, y: 1 };
+        let floor = 1;
+        let gems = 0;
+        let keys = 0;
+        let hp = 100;
+        let maxHp = 100;
+        let gameOver = false;
+        let grid = [];
+        let boxes = [];
+        let switches = [];
+        let lockedDoors = [];
+        let animationFrameId = null;
+        let messageTimeout = null;
+        
+        // リズム関連
+        let beatPhase = 0;
+        let lastMoveTime = 0;
+        let moveDelay = 100;
+
+        // タイル種類
+        const TILE = {
+            EMPTY: 0,
+            WALL: 1,
+            FLOOR: 2,
+            GOAL: 3,
+            GEM: 4,
+            KEY: 5,
+            LOCKED_DOOR: 6,
+            SWITCH: 7,
+            BOX: 8
+        };
+
+        // レベルデザイン
+        const levels = [
+            // レベル1: 基本
+            [
+                [1,1,1,1,1,1,1,1,1,1],
+                [1,2,2,2,1,2,2,2,2,1],
+                [1,2,1,2,1,2,1,1,2,1],
+                [1,2,1,4,2,2,2,1,2,1],
+                [1,2,1,1,1,1,2,1,2,1],
+                [1,2,2,2,2,2,2,1,2,1],
+                [1,1,1,2,1,1,1,1,2,1],
+                [1,4,2,2,2,2,2,2,2,1],
+                [1,2,1,1,1,1,1,1,3,1],
+                [1,1,1,1,1,1,1,1,1,1]
+            ],
+            // レベル2: 鍵とドア
+            [
+                [1,1,1,1,1,1,1,1,1,1],
+                [1,2,2,2,1,4,2,2,2,1],
+                [1,2,1,2,1,1,1,1,2,1],
+                [1,2,1,2,2,2,2,1,2,1],
+                [1,5,1,1,6,1,2,1,2,1],
+                [1,2,2,2,2,1,2,2,2,1],
+                [1,1,1,1,2,1,1,1,2,1],
+                [1,4,2,2,2,2,2,2,2,1],
+                [1,2,1,1,1,1,1,1,3,1],
+                [1,1,1,1,1,1,1,1,1,1]
+            ],
+            // レベル3: 箱パズル
+            [
+                [1,1,1,1,1,1,1,1,1,1],
+                [1,2,2,2,2,2,2,4,2,1],
+                [1,2,1,1,1,1,1,1,2,1],
+                [1,2,1,7,2,8,2,1,2,1],
+                [1,2,1,2,1,1,2,1,2,1],
+                [1,2,1,2,2,2,2,1,2,1],
+                [1,2,1,1,1,1,1,1,2,1],
+                [1,4,2,2,2,2,2,2,2,1],
+                [1,2,2,2,2,2,2,2,3,1],
+                [1,1,1,1,1,1,1,1,1,1]
+            ],
+            // レベル4: 複雑なパズル
+            [
+                [1,1,1,1,1,1,1,1,1,1],
+                [1,2,2,5,1,8,2,7,2,1],
+                [1,2,1,1,1,1,1,1,2,1],
+                [1,2,1,4,2,2,2,1,2,1],
+                [1,2,6,2,1,1,2,1,2,1],
+                [1,2,1,2,1,8,2,7,2,1],
+                [1,2,1,2,1,1,1,1,2,1],
+                [1,4,1,2,2,2,2,2,2,1],
+                [1,2,2,2,1,1,1,1,3,1],
+                [1,1,1,1,1,1,1,1,1,1]
+            ],
+            // レベル5: 最終ステージ
+            [
+                [1,1,1,1,1,1,1,1,1,1],
+                [1,2,5,2,1,8,2,7,4,1],
+                [1,2,1,2,1,1,1,1,2,1],
+                [1,2,1,2,2,2,2,8,2,1],
+                [1,2,1,1,6,1,1,1,2,1],
+                [1,2,2,2,2,2,2,7,2,1],
+                [1,1,1,1,2,1,1,1,2,1],
+                [1,4,2,2,2,2,2,2,2,1],
+                [1,2,1,1,1,1,1,2,3,1],
+                [1,1,1,1,1,1,1,1,1,1]
+            ]
+        ];
+
+        // レベル初期化
+        function initLevel() {
+            if (floor > levels.length) {
+                endGame(true);
+                return;
+            }
+
+            grid = JSON.parse(JSON.stringify(levels[floor - 1]));
+            boxes = [];
+            switches = [];
+            lockedDoors = [];
+            player = { x: 1, y: 1 };
+
+            // 特殊タイルを配列に保存
+            for (let y = 0; y < GRID_SIZE; y++) {
+                for (let x = 0; x < GRID_SIZE; x++) {
+                    if (grid[y][x] === TILE.BOX) {
+                        boxes.push({ x, y });
+                        grid[y][x] = TILE.FLOOR;
+                    } else if (grid[y][x] === TILE.SWITCH) {
+                        switches.push({ x, y, active: false });
+                        grid[y][x] = TILE.FLOOR;
+                    } else if (grid[y][x] === TILE.LOCKED_DOOR) {
+                        lockedDoors.push({ x, y });
+                    }
+                }
+            }
+        }
+
+        // タイル描画
+        function drawTile(x, y, type) {
+            const px = x * TILE_SIZE;
+            const py = y * TILE_SIZE;
+
+            // グリッド背景
+            ctx.fillStyle = '#000510';
+            ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+
+            // グリッド線（サイバー風）
+            ctx.strokeStyle = 'rgba(0, 255, 255, 0.2)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(px, py, TILE_SIZE, TILE_SIZE);
+
+            ctx.font = '32px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            switch(type) {
+                case TILE.WALL:
+                    // サイバー風の壁
+                    ctx.fillStyle = '#001a33';
+                    ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+                    ctx.strokeStyle = '#00ffff';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(px + 2, py + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+                    ctx.fillStyle = 'rgba(0, 255, 255, 0.2)';
+                    ctx.fillRect(px + 4, py + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+                    ctx.fillText('⬛', px + TILE_SIZE/2, py + TILE_SIZE/2);
+                    break;
+                case TILE.FLOOR:
+                    // 床
+                    ctx.fillStyle = '#001020';
+                    ctx.fillRect(px + 4, py + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+                    break;
+                case TILE.GOAL:
+                    // ゴール
+                    ctx.fillStyle = '#00ff00';
+                    ctx.shadowBlur = 20;
+                    ctx.shadowColor = '#00ff00';
+                    ctx.fillRect(px + 4, py + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+                    ctx.shadowBlur = 0;
+                    ctx.fillText('🚪', px + TILE_SIZE/2, py + TILE_SIZE/2);
+                    break;
+                case TILE.GEM:
+                    ctx.fillStyle = '#001020';
+                    ctx.fillRect(px + 4, py + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = '#00ffff';
+                    ctx.fillText('💎', px + TILE_SIZE/2, py + TILE_SIZE/2);
+                    ctx.shadowBlur = 0;
+                    break;
+                case TILE.KEY:
+                    ctx.fillStyle = '#001020';
+                    ctx.fillRect(px + 4, py + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = '#ffff00';
+                    ctx.fillText('🔑', px + TILE_SIZE/2, py + TILE_SIZE/2);
+                    ctx.shadowBlur = 0;
+                    break;
+                case TILE.LOCKED_DOOR:
+                    ctx.fillStyle = '#330011';
+                    ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+                    ctx.strokeStyle = '#ff0066';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(px + 2, py + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = '#ff0066';
+                    ctx.fillText('🔒', px + TILE_SIZE/2, py + TILE_SIZE/2);
+                    ctx.shadowBlur = 0;
+                    break;
+            }
+        }
+
+        // リズムインジケーター描画（プレイヤー周り）
+        function drawRhythmIndicator() {
+            const px = player.x * TILE_SIZE + TILE_SIZE / 2;
+            const py = player.y * TILE_SIZE + TILE_SIZE / 2;
+            
+            const inPerfectZone = (beatPhase > 0.45 && beatPhase < 0.55);
+            const inGoodZone = (beatPhase > 0.35 && beatPhase < 0.65);
+            
+            // 外側のリング
+            ctx.strokeStyle = 'rgba(0, 255, 255, 0.4)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(px, py, 28, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // リズムに合わせた発光
+            if (inPerfectZone) {
+                // PERFECT ゾーン - 黄色
+                const alpha = 0.8;
+                ctx.strokeStyle = `rgba(255, 255, 0, ${alpha})`;
+                ctx.lineWidth = 5;
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = '#ffff00';
+                ctx.beginPath();
+                ctx.arc(px, py, 28, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+                
+                ctx.fillStyle = `rgba(255, 255, 0, ${alpha * 0.3})`;
+                ctx.beginPath();
+                ctx.arc(px, py, 28, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (inGoodZone) {
+                // GOOD ゾーン - 緑
+                const alpha = 0.6;
+                ctx.strokeStyle = `rgba(0, 255, 0, ${alpha})`;
+                ctx.lineWidth = 4;
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = '#00ff00';
+                ctx.beginPath();
+                ctx.arc(px, py, 28, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+                
+                ctx.fillStyle = `rgba(0, 255, 0, ${alpha * 0.2})`;
+                ctx.beginPath();
+                ctx.arc(px, py, 28, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // 回転するパルスライン
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 3;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#00ffff';
+            ctx.beginPath();
+            const angle = beatPhase * Math.PI * 2 - Math.PI / 2;
+            ctx.moveTo(px, py);
+            ctx.lineTo(
+                px + Math.cos(angle) * 28,
+                py + Math.sin(angle) * 28
+            );
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+        }
+
+        // タイミングバー更新
+        function updateTimingBar() {
+            const indicator = document.getElementById('timing-indicator');
+            if (indicator) {
+                const position = beatPhase * 100;
+                indicator.style.left = position + '%';
+            }
+        }
+
+        // 描画
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#000510';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // グリッド描画
+            for (let y = 0; y < GRID_SIZE; y++) {
+                for (let x = 0; x < GRID_SIZE; x++) {
+                    drawTile(x, y, grid[y][x]);
+                }
+            }
+
+            // スイッチ描画
+            ctx.font = '28px Arial';
+            for (let sw of switches) {
+                const px = sw.x * TILE_SIZE;
+                const py = sw.y * TILE_SIZE;
+                ctx.fillStyle = sw.active ? '#00ff00' : '#666666';
+                if (sw.active) {
+                    ctx.shadowBlur = 20;
+                    ctx.shadowColor = '#00ff00';
+                }
+                ctx.fillRect(px + 8, py + 8, TILE_SIZE - 16, TILE_SIZE - 16);
+                ctx.shadowBlur = 0;
+                ctx.fillText('⭕', px + TILE_SIZE/2, py + TILE_SIZE/2);
+            }
+
+            // ロックされたドア描画
+            for (let door of lockedDoors) {
+                drawTile(door.x, door.y, TILE.LOCKED_DOOR);
+            }
+
+            // 箱描画
+            ctx.font = '32px Arial';
+            for (let box of boxes) {
+                const px = box.x * TILE_SIZE;
+                const py = box.y * TILE_SIZE;
+                ctx.fillStyle = '#1a3344';
+                ctx.fillRect(px + 4, py + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+                ctx.strokeStyle = '#00ffff';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(px + 6, py + 6, TILE_SIZE - 12, TILE_SIZE - 12);
+                ctx.fillText('📦', px + TILE_SIZE/2, py + TILE_SIZE/2);
+            }
+
+            // リズムインジケーター描画
+            drawRhythmIndicator();
+
+            // プレイヤー描画
+            const px = player.x * TILE_SIZE;
+            const py = player.y * TILE_SIZE;
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#00ffff';
+            ctx.fillText('🤖', px + TILE_SIZE/2, py + TILE_SIZE/2);
+            ctx.shadowBlur = 0;
+        }
+
+        // リズムチェック
+        function checkBeat() {
+            // 0.45-0.55 = PERFECT (中央10%)
+            // 0.35-0.65 = GOOD (中央30%)
+            // それ以外 = MISS
+            
+            if (beatPhase > 0.45 && beatPhase < 0.55) return 'perfect';
+            if (beatPhase > 0.35 && beatPhase < 0.65) return 'good';
+            return 'miss';
+        }
+
+        // HP更新
+        function updateHP() {
+            const hpFill = document.getElementById('hp-fill');
+            if (hpFill) {
+                const percent = Math.max(0, (hp / maxHp) * 100);
+                hpFill.style.width = percent + '%';
+            }
+            
+            if (hp <= 0 && !gameOver) {
+                endGame(false);
+            }
+        }
+
+        // 移動処理
+        function tryMove(dx, dy) {
+            if (gameOver) return;
+            
+            const now = Date.now();
+            if (now - lastMoveTime < moveDelay) return;
+
+            const beatResult = checkBeat();
+            
+            const newX = player.x + dx;
+            const newY = player.y + dy;
+
+            // 範囲外チェック
+            if (newX < 0 || newX >= GRID_SIZE || newY < 0 || newY >= GRID_SIZE) {
+                return;
+            }
+
+            // 壁チェック
+            if (grid[newY][newX] === TILE.WALL) {
+                if (beatResult === 'miss') {
+                    hp = Math.max(0, hp - 5);
+                    updateHP();
+                    showMessage('COLLISION! -5 ENERGY', 'miss');
+                } else {
+                    showMessage('WALL DETECTED', 'miss');
+                }
+                lastMoveTime = now;
+                return;
+            }
+
+            // ロックされたドアチェック
+            const doorIndex = lockedDoors.findIndex(d => d.x === newX && d.y === newY);
+            if (doorIndex !== -1) {
+                if (keys > 0) {
+                    keys--;
+                    lockedDoors.splice(doorIndex, 1);
+                    if (beatResult === 'perfect') {
+                        showMessage('⚡ PERFECT! DOOR UNLOCKED!', 'perfect');
+                    } else {
+                        showMessage('DOOR UNLOCKED', 'good');
+                    }
+                } else {
+                    if (beatResult === 'miss') {
+                        hp = Math.max(0, hp - 5);
+                        updateHP();
+                        showMessage('KEY REQUIRED! -5 ENERGY', 'miss');
+                    } else {
+                        showMessage('KEY REQUIRED', 'miss');
+                    }
+                    lastMoveTime = now;
+                    return;
+                }
+            }
+
+            // 箱を押す
+            const boxIndex = boxes.findIndex(b => b.x === newX && b.y === newY);
+            if (boxIndex !== -1) {
+                const boxNewX = newX + dx;
+                const boxNewY = newY + dy;
+
+                // 範囲外チェック
+                if (boxNewX < 0 || boxNewX >= GRID_SIZE || boxNewY < 0 || boxNewY >= GRID_SIZE) {
+                    if (beatResult === 'miss') {
+                        hp = Math.max(0, hp - 3);
+                        updateHP();
+                        showMessage('CANNOT PUSH! -3 ENERGY', 'miss');
+                    } else {
+                        showMessage('CANNOT PUSH', 'miss');
+                    }
+                    lastMoveTime = now;
+                    return;
+                }
+
+                // 箱の移動先チェック
+                if (grid[boxNewY][boxNewX] === TILE.WALL || 
+                    boxes.some(b => b.x === boxNewX && b.y === boxNewY) ||
+                    lockedDoors.some(d => d.x === boxNewX && d.y === boxNewY)) {
+                    if (beatResult === 'miss') {
+                        hp = Math.max(0, hp - 3);
+                        updateHP();
+                        showMessage('CANNOT PUSH! -3 ENERGY', 'miss');
+                    } else {
+                        showMessage('CANNOT PUSH', 'miss');
+                    }
+                    lastMoveTime = now;
+                    return;
+                }
+
+                boxes[boxIndex].x = boxNewX;
+                boxes[boxIndex].y = boxNewY;
+                
+                if (beatResult === 'perfect') {
+                    showMessage('⚡ PERFECT! BOX MOVED!', 'perfect');
+                } else if (beatResult === 'good') {
+                    showMessage('✓ GOOD! BOX MOVED!', 'good');
+                } else {
+                    hp = Math.max(0, hp - 3);
+                    updateHP();
+                    showMessage('✗ MISS! BOX MOVED -3 ENERGY', 'miss');
+                }
+            }
+
+            // タイミングによるペナルティ/ボーナス
+            if (beatResult === 'perfect') {
+                if (boxIndex === -1) {
+                    showMessage('⚡ PERFECT!', 'perfect');
+                }
+                hp = Math.min(maxHp, hp + 1);
+                updateHP();
+            } else if (beatResult === 'good') {
+                if (boxIndex === -1) {
+                    showMessage('✓ GOOD!', 'good');
+                }
+            } else {
+                hp = Math.max(0, hp - 5);
+                updateHP();
+                if (boxIndex === -1) {
+                    showMessage('✗ MISS! -5 ENERGY', 'miss');
+                }
+            }
+
+            // プレイヤー移動
+            player.x = newX;
+            player.y = newY;
+            lastMoveTime = now;
+
+            // アイテム取得
+            if (grid[newY][newX] === TILE.GEM) {
+                gems++;
+                grid[newY][newX] = TILE.FLOOR;
+                hp = Math.min(maxHp, hp + 10);
+                updateHP();
+                showMessage('💎 DATA ACQUIRED! +10 ENERGY', 'good');
+            } else if (grid[newY][newX] === TILE.KEY) {
+                keys++;
+                grid[newY][newX] = TILE.FLOOR;
+                showMessage('🔑 KEY ACQUIRED!', 'good');
+            } else if (grid[newY][newX] === TILE.GOAL) {
+                const allSwitchesActive = switches.length === 0 || switches.every(s => s.active);
+                if (allSwitchesActive) {
+                    floor++;
+                    hp = Math.min(maxHp, hp + 20);
+                    updateHP();
+                    showMessage('🎉 LEVEL CLEAR! +20 ENERGY', 'perfect');
+                    setTimeout(() => {
+                        if (!gameOver) {
+                            initLevel();
+                        }
+                    }, 1500);
+                } else {
+                    showMessage('ACTIVATE ALL SWITCHES!', 'miss');
+                }
+            }
+
+            // スイッチ判定
+            for (let sw of switches) {
+                sw.active = boxes.some(b => b.x === sw.x && b.y === sw.y);
+            }
+        }
+
+        // メッセージ表示
+        function showMessage(text, type) {
+            const msgEl = document.getElementById('message');
+            if (msgEl) {
+                msgEl.textContent = text;
+                msgEl.className = 'message ' + type;
+                
+                if (messageTimeout) {
+                    clearTimeout(messageTimeout);
+                }
+                
+                messageTimeout = setTimeout(() => {
+                    if (msgEl) {
+                        msgEl.textContent = '';
+                        msgEl.className = 'message';
+                    }
+                }, 1000);
+            }
+        }
+
+        // キー入力
+        let keysPressed = {};
+        document.addEventListener('keydown', (e) => {
+            if (gameOver) return;
+            if (keysPressed[e.key]) return;
+            
+            keysPressed[e.key] = true;
+
+            switch(e.key) {
+                case 'ArrowUp':
+                    e.preventDefault();
+                    tryMove(0, -1);
+                    break;
+                case 'ArrowDown':
+                    e.preventDefault();
+                    tryMove(0, 1);
+                    break;
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    tryMove(-1, 0);
+                    break;
+                case 'ArrowRight':
+                    e.preventDefault();
+                    tryMove(1, 0);
+                    break;
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keysPressed[e.key] = false;
+        });
+
+        // ゲーム更新
+        function update() {
+            if (gameOver) {
+                if (animationFrameId) {
+                    cancelAnimationFrame(animationFrameId);
+                    animationFrameId = null;
+                }
+                return;
+            }
+
+            // ビートフェーズ更新（0から1まで）
+            beatPhase += 0.015; // スピードを少し遅く調整
+            if (beatPhase >= 1) {
+                beatPhase = 0;
+            }
+
+            // タイミングバー更新
+            updateTimingBar();
+
+            const floorEl = document.getElementById('floor');
+            const gemsEl = document.getElementById('gems');
+            const keysEl = document.getElementById('keys');
+            
+            if (floorEl) floorEl.textContent = floor;
+            if (gemsEl) gemsEl.textContent = gems;
+            if (keysEl) keysEl.textContent = keys;
+            
+            draw();
+            animationFrameId = requestAnimationFrame(update);
+        }
+
+        // ゲームオーバー
+        function endGame(won) {
+            if (gameOver) return;
+            
+            gameOver = true;
+            
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            
+            const title = document.getElementById('game-over-title');
+            const message = document.getElementById('game-over-message');
+            
+            if (title && message) {
+                if (won) {
+                    title.textContent = '⚡ SYSTEM COMPLETE ⚡';
+                    message.textContent = 'ALL LEVELS CLEARED!';
+                } else {
+                    title.textContent = '⚠ SYSTEM HALT ⚠';
+                    message.textContent = 'ENERGY DEPLETED';
+                }
+            }
+            
+            const finalFloor = document.getElementById('final-floor');
+            const finalGems = document.getElementById('final-gems');
+            
+            if (finalFloor) finalFloor.textContent = floor;
+            if (finalGems) finalGems.textContent = gems;
+            
+            const gameOverEl = document.getElementById('game-over');
+            if (gameOverEl) {
+                gameOverEl.classList.add('show');
+            }
+        }
+
+        // ゲーム再開
+        function restartGame() {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            
+            if (messageTimeout) {
+                clearTimeout(messageTimeout);
+                messageTimeout = null;
+            }
+            
+            floor = 1;
+            gems = 0;
+            keys = 0;
+            hp = 100;
+            gameOver = false;
+            beatPhase = 0;
+            keysPressed = {};
+            
+            const gameOverEl = document.getElementById('game-over');
+            if (gameOverEl) {
+                gameOverEl.classList.remove('show');
+            }
+            
+            initLevel();
+            updateHP();
+            update();
+        }
+
+        // ゲーム開始
+        initLevel();
+        updateHP();
+        update();
+    </script>
+</body>
+</html>
