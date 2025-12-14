@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>サイバーリズムランナー</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #0a0a1f 0%, #1a1a3f 50%, #0f0f2f 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        #gameContainer {
+            background: rgba(10, 10, 30, 0.9);
+            border: 3px solid #00ffff;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 0 40px rgba(0, 255, 255, 0.5), inset 0 0 20px rgba(0, 255, 255, 0.1);
+            max-width: 900px;
+            width: 95%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #00ffff;
+            text-shadow: 0 0 20px #00ffff, 0 0 40px #0099ff;
+            margin-bottom: 20px;
+            font-size: 2.5em;
+            letter-spacing: 3px;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from {
+                text-shadow: 0 0 10px #00ffff, 0 0 20px #00ffff, 0 0 30px #0099ff;
+            }
+            to {
+                text-shadow: 0 0 20px #00ffff, 0 0 40px #0099ff, 0 0 60px #0066ff;
+            }
+        }
+
+        #gameScreen {
+            background: linear-gradient(180deg, #000033 0%, #001a4d 100%);
+            border: 2px solid #00ccff;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            position: relative;
+            height: 500px;
+            overflow: hidden;
+            box-shadow: inset 0 0 30px rgba(0, 255, 255, 0.2);
+        }
+
+        #stats {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .stat {
+            background: linear-gradient(135deg, #003366 0%, #004d7f 100%);
+            padding: 12px 25px;
+            border-radius: 8px;
+            border: 2px solid #00ffff;
+            color: #00ffff;
+            font-size: 1.1em;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+            text-align: center;
+            min-width: 120px;
+        }
+
+        .stat-label {
+            font-size: 0.8em;
+            color: #66ccff;
+            margin-bottom: 3px;
+        }
+
+        .stat-value {
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+
+        #player {
+            position: absolute;
+            bottom: 50px;
+            left: 100px;
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #00ffff 0%, #0099ff 100%);
+            border-radius: 50%;
+            box-shadow: 0 0 30px #00ffff, inset 0 0 10px rgba(255, 255, 255, 0.5);
+            transition: transform 0.1s;
+            z-index: 10;
+        }
+
+        #player::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 3px solid #ffffff;
+            animation: pulse 1s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.3);
+                opacity: 0;
+            }
+        }
+
+        .obstacle {
+            position: absolute;
+            right: -60px;
+            bottom: 50px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #ff0066 0%, #ff3399 100%);
+            border-radius: 10px;
+            box-shadow: 0 0 20px #ff0066;
+            animation: moveObstacle 3s linear;
+        }
+
+        @keyframes moveObstacle {
+            from {
+                right: -60px;
+            }
+            to {
+                right: 100%;
+            }
+        }
+
+        .beat-indicator {
+            position: absolute;
+            top: 50%;
+            left: 100px;
+            width: 80px;
+            height: 80px;
+            border: 5px solid #ffff00;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            animation: beatPulse 0.5s ease-in-out;
+            z-index: 5;
+        }
+
+        @keyframes beatPulse {
+            0% {
+                transform: translate(-50%, -50%) scale(0.5);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(1.5);
+                opacity: 0;
+            }
+        }
+
+        #rhythmBar {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            height: 60px;
+            background: rgba(0, 20, 40, 0.8);
+            border: 3px solid #00ffff;
+            border-radius: 30px;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5), inset 0 0 15px rgba(0, 255, 255, 0.2);
+        }
+
+        #rhythmProgress {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #00ff00 0%, #00ffff 50%, #00ff00 100%);
+            box-shadow: 0 0 20px #00ffff;
+            animation: rhythmFlow 2s linear infinite;
+        }
+
+        @keyframes rhythmFlow {
+            0% {
+                width: 0%;
+            }
+            100% {
+                width: 100%;
+            }
+        }
+
+        .beat-zone {
+            position: absolute;
+            top: 0;
+            right: 15%;
+            width: 15%;
+            height: 100%;
+            background: rgba(255, 255, 0, 0.3);
+            border-left: 3px solid #ffff00;
+            border-right: 3px solid #ffff00;
+            box-shadow: inset 0 0 20px rgba(255, 255, 0, 0.5);
+        }
+
+        #beatMarker {
+            position: absolute;
+            top: 50%;
+            right: 22.5%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 40px;
+            background: #ffff00;
+            border-radius: 5px;
+            box-shadow: 0 0 15px #ffff00;
+            animation: markerBlink 0.5s ease-in-out infinite;
+        }
+
+        @keyframes markerBlink {
+            0%, 100% {
+                opacity: 1;
+                transform: translateY(-50%) scale(1);
+            }
+            50% {
+                opacity: 0.6;
+                transform: translateY(-50%) scale(1.2);
+            }
+        }
+
+        #controls {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #0066cc 0%, #0099ff 100%);
+            color: white;
+            border: 2px solid #00ffff;
+            padding: 15px 40px;
+            font-size: 1.2em;
+            border-radius: 10px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+            transition: all 0.3s;
+            margin: 5px;
+        }
+
+        button:hover {
+            background: linear-gradient(135deg, #0099ff 0%, #00ccff 100%);
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.8);
+            transform: translateY(-2px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        #message {
+            text-align: center;
+            color: #00ffff;
+            font-size: 1.3em;
+            margin: 15px 0;
+            min-height: 30px;
+            text-shadow: 0 0 10px #00ffff;
+        }
+
+        .perfect {
+            color: #ffff00 !important;
+            font-weight: bold;
+            animation: perfectGlow 0.5s ease-in-out;
+        }
+
+        @keyframes perfectGlow {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.2);
+                text-shadow: 0 0 30px #ffff00;
+            }
+        }
+
+        .good {
+            color: #00ff00 !important;
+        }
+
+        .miss {
+            color: #ff0066 !important;
+        }
+
+        .grid-line {
+            position: absolute;
+            width: 100%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent 0%, #00ffff 50%, transparent 100%);
+            opacity: 0.2;
+            animation: gridMove 2s linear infinite;
+        }
+
+        @keyframes gridMove {
+            from {
+                transform: translateX(100%);
+            }
+            to {
+                transform: translateX(-100%);
+            }
+        }
+
+        #instructions {
+            background: rgba(0, 50, 80, 0.6);
+            border: 2px solid #00ccff;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            color: #66ccff;
+            font-size: 0.95em;
+            line-height: 1.6;
+        }
+
+        #instructions h3 {
+            color: #00ffff;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        #instructions ul {
+            list-style: none;
+            padding-left: 10px;
+        }
+
+        #instructions li {
+            margin: 5px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        #instructions li::before {
+            content: '▸';
+            position: absolute;
+            left: 0;
+            color: #00ffff;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <h1>⚡ CYBER RHYTHM RUNNER ⚡</h1>
+        
+        <div id="stats">
+            <div class="stat">
+                <div class="stat-label">SCORE</div>
+                <div class="stat-value" id="score">0</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">STREAK</div>
+                <div class="stat-value" id="combo">0</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">ACCURACY</div>
+                <div class="stat-value" id="accuracy">100%</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">LEVEL</div>
+                <div class="stat-value" id="level">1</div>
+            </div>
+        </div>
+
+        <div id="message">Press START to begin!</div>
+
+        <div id="gameScreen">
+            <div id="rhythmBar">
+                <div id="rhythmProgress"></div>
+                <div class="beat-zone"></div>
+                <div id="beatMarker"></div>
+            </div>
+            <div id="player"></div>
+        </div>
+
+        <div id="controls">
+            <button id="startBtn" onclick="startGame()">START</button>
+            <button id="jumpBtn" onclick="jump()" disabled>JUMP [SPACE]</button>
+        </div>
+
+        <div id="instructions">
+            <h3>📡 HOW TO PLAY</h3>
+            <ul>
+                <li><strong>リズムバー</strong>（画面上部）の緑のゲージが黄色いゾーンに入ったタイミングでJUMPしよう！</li>
+                <li><strong>黄色いマーカー</strong>が最適なタイミングを示しています</li>
+                <li><strong>完璧なタイミング</strong>で障害物を避けると高得点＆コンボ継続！</li>
+                <li>ミスするとコンボがリセットされます</li>
+                <li>レベルが上がると難易度UP！</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        let score = 0;
+        let combo = 0;
+        let level = 1;
+        let isPlaying = false;
+        let obstacleInterval;
+        let beatInterval;
+        let obstacles = [];
+        let totalAttempts = 0;
+        let perfectHits = 0;
+        let goodHits = 0;
+        let rhythmCycle = 0;
+        let beatDuration = 2000; // 2秒で1サイクル
+
+        const gameScreen = document.getElementById('gameScreen');
+        const player = document.getElementById('player');
+        const scoreEl = document.getElementById('score');
+        const comboEl = document.getElementById('combo');
+        const accuracyEl = document.getElementById('accuracy');
+        const levelEl = document.getElementById('level');
+        const messageEl = document.getElementById('message');
+        const startBtn = document.getElementById('startBtn');
+        const jumpBtn = document.getElementById('jumpBtn');
+        const rhythmProgress = document.getElementById('rhythmProgress');
+
+        // グリッドライン追加（未来的な演出）
+        for (let i = 0; i < 5; i++) {
+            const line = document.createElement('div');
+            line.className = 'grid-line';
+            line.style.top = (20 + i * 100) + 'px';
+            line.style.animationDelay = (i * 0.4) + 's';
+            gameScreen.appendChild(line);
+        }
+
+        // リズムバーのアニメーション更新
+        function updateRhythmBar() {
+            if (!isPlaying) return;
+            
+            const startTime = Date.now();
+            
+            function animate() {
+                if (!isPlaying) {
+                    rhythmProgress.style.width = '0%';
+                    return;
+                }
+                
+                const elapsed = Date.now() - startTime;
+                const progress = (elapsed % beatDuration) / beatDuration * 100;
+                rhythmProgress.style.width = progress + '%';
+                
+                requestAnimationFrame(animate);
+            }
+            
+            animate();
+        }
+
+        // ビートインジケーター表示
+        function showBeatIndicator() {
+            const indicator = document.createElement('div');
+            indicator.className = 'beat-indicator';
+            gameScreen.appendChild(indicator);
+            
+            setTimeout(() => {
+                indicator.remove();
+            }, 500);
+        }
+
+        // ビートのタイミングチェック
+        function checkBeatTiming() {
+            const elapsed = Date.now() % beatDuration;
+            const normalizedTime = elapsed / beatDuration;
+            
+            // 黄色いゾーンは85%～100%の位置（右端15%）
+            // 完璧なタイミングは90%～95%（マーカー位置）
+            if (normalizedTime >= 0.90 && normalizedTime <= 0.95) {
+                return 'perfect';
+            } else if (normalizedTime >= 0.85 && normalizedTime <= 1.0) {
+                return 'good';
+            } else {
+                return 'miss';
+            }
+        }
+
+        function jump() {
+            if (!isPlaying) return;
+            
+            totalAttempts++;
+            const timing = checkBeatTiming();
+            
+            // ジャンプアニメーション
+            player.style.transform = 'translateY(-80px) scale(1.1)';
+            setTimeout(() => {
+                player.style.transform = 'translateY(0) scale(1)';
+            }, 300);
+
+            // タイミング評価
+            if (timing === 'perfect') {
+                perfectHits++;
+                score += 100 * level;
+                combo++;
+                showMessage('⚡ PERFECT! ⚡', 'perfect');
+                showBeatIndicator();
+            } else if (timing === 'good') {
+                goodHits++;
+                score += 50 * level;
+                combo++;
+                showMessage('✓ GOOD!', 'good');
+            } else {
+                combo = 0;
+                showMessage('✗ MISS!', 'miss');
+            }
+
+            updateDisplay();
+            checkLevelUp();
+        }
+
+        function createObstacle() {
+            const obstacle = document.createElement('div');
+            obstacle.className = 'obstacle';
+            
+            const obstacleSpeed = Math.max(2000, 3000 - (level * 200));
+            obstacle.style.animation = `moveObstacle ${obstacleSpeed}ms linear`;
+            
+            gameScreen.appendChild(obstacle);
+            obstacles.push({
+                element: obstacle,
+                passed: false
+            });
+
+            obstacle.addEventListener('animationend', () => {
+                obstacle.remove();
+                obstacles = obstacles.filter(o => o.element !== obstacle);
+            });
+
+            setTimeout(() => checkCollision(obstacle), obstacleSpeed / 2);
+        }
+
+        function checkCollision(obstacle) {
+            if (!isPlaying) return;
+            
+            const obstacleRect = obstacle.getBoundingClientRect();
+            const playerRect = player.getBoundingClientRect();
+
+            if (obstacleRect.left < playerRect.right &&
+                obstacleRect.right > playerRect.left &&
+                obstacleRect.bottom > playerRect.top &&
+                obstacleRect.top < playerRect.bottom) {
+                
+                gameOver();
+            }
+        }
+
+        function showMessage(text, className = '') {
+            messageEl.textContent = text;
+            messageEl.className = className;
+        }
+
+        function updateDisplay() {
+            scoreEl.textContent = score;
+            comboEl.textContent = combo;
+            levelEl.textContent = level;
+            
+            if (totalAttempts > 0) {
+                const accuracy = Math.round(((perfectHits + goodHits) / totalAttempts) * 100);
+                accuracyEl.textContent = accuracy + '%';
+            }
+        }
+
+        function checkLevelUp() {
+            const newLevel = Math.floor(score / 1000) + 1;
+            if (newLevel > level) {
+                level = newLevel;
+                showMessage(`🚀 LEVEL ${level} UNLOCKED! 🚀`, 'perfect');
+                
+                // レベルアップ時に障害物生成速度を上げる
+                clearInterval(obstacleInterval);
+                const spawnRate = Math.max(1200, 2000 - (level * 150));
+                obstacleInterval = setInterval(createObstacle, spawnRate);
+            }
+        }
+
+        function startGame() {
+            isPlaying = true;
+            score = 0;
+            combo = 0;
+            level = 1;
+            totalAttempts = 0;
+            perfectHits = 0;
+            goodHits = 0;
+            
+            obstacles.forEach(obs => obs.element.remove());
+            obstacles = [];
+            
+            showMessage('GO! Jump on the BEAT!');
+            updateDisplay();
+            
+            startBtn.disabled = true;
+            jumpBtn.disabled = false;
+            
+            updateRhythmBar();
+            
+            obstacleInterval = setInterval(createObstacle, 2000);
+        }
+
+        function gameOver() {
+            isPlaying = false;
+            clearInterval(obstacleInterval);
+            clearInterval(beatInterval);
+            
+            showMessage(`💥 GAME OVER! Final Score: ${score} 💥`, 'miss');
+            
+            startBtn.disabled = false;
+            jumpBtn.disabled = true;
+            
+            obstacles.forEach(obs => obs.element.remove());
+            obstacles = [];
+        }
+
+        // キーボード操作
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (isPlaying) {
+                    jump();
+                } else {
+                    startGame();
+                }
+            }
+        });
+
+        // 初期表示
+        updateDisplay();
+    </script>
+</body>
+</html>
