@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>超短シューティング</title>
+<style>
+body{margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#000;font-family:monospace}
+canvas{border:2px solid #0f0}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+const c=document.getElementById('c'),x=c.getContext('2d');
+c.width=400;c.height=500;
+let p={x:200,y:450,vx:0,vy:0},b=[],e=[],w=[],s=0,g=1,t=0,k={};
+document.onkeydown=e=>{k[e.key]=1;if(e.key==' '&&g){b.push({x:p.x,y:p.y});e.preventDefault()}};
+document.onkeyup=e=>{k[e.key]=0};
+setInterval(()=>{
+if(!g)return;
+t++;
+if(k.ArrowLeft)p.vx-=0.5;
+if(k.ArrowRight)p.vx+=0.5;
+if(k.ArrowUp)p.vy-=0.5;
+if(k.ArrowDown)p.vy+=0.5;
+p.vx*=0.9;p.vy*=0.9;
+p.x+=p.vx;p.y+=p.vy;
+p.x=Math.max(15,Math.min(385,p.x));
+p.y=Math.max(15,Math.min(485,p.y));
+x.fillStyle='#000';x.fillRect(0,0,400,500);
+x.fillStyle='#0f0';x.fillRect(p.x-10,p.y-10,20,20);
+b=b.filter(u=>{u.y-=8;x.fillRect(u.x-2,u.y,4,10);return u.y>0});
+if(Math.random()<.02)e.push({x:Math.random()*380+10,y:0});
+if(Math.random()<.015)w.push({x:Math.random()*380+10,y:0,o:Math.random()*6});
+e=e.filter(n=>{
+n.y+=2;x.fillStyle='#f00';x.fillRect(n.x-10,n.y-10,20,20);
+if(Math.abs(n.x-p.x)<20&&Math.abs(n.y-p.y)<20){g=0;x.fillStyle='#fff';x.font='40px monospace';x.fillText('GAME OVER',60,250);return false}
+b.forEach((u,i)=>{if(Math.abs(u.x-n.x)<10&&Math.abs(u.y-n.y)<10){b.splice(i,1);s++;n.d=1}});
+return n.y<500&&!n.d;
+});
+w=w.filter(n=>{
+n.y+=1.5;n.x+=Math.sin((n.y+n.o*100)/20)*3;
+x.fillStyle='#ff0';
+x.beginPath();x.arc(n.x,n.y,12,0,Math.PI*2);x.fill();
+if(Math.abs(n.x-p.x)<22&&Math.abs(n.y-p.y)<22){g=0;x.fillStyle='#fff';x.font='40px monospace';x.fillText('GAME OVER',60,250);return false}
+b.forEach((u,i)=>{if(Math.abs(u.x-n.x)<12&&Math.abs(u.y-n.y)<12){b.splice(i,1);s+=3;n.d=1}});
+return n.y<500&&n.x>0&&n.x<400&&!n.d;
+});
+x.fillStyle='#fff';x.font='20px monospace';x.fillText('Score: '+s,10,30);
+},30);
+</script>
+</body>
+</html>
