@@ -3,9 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <title>クリックゲーム</title>
+<style>
+body{margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(45deg,#667eea,#764ba2);font-family:Arial;cursor:pointer;transition:.3s}
+body:active{transform:scale(.95)}
+h1{color:#fff;font-size:4em;text-shadow:0 5px 20px rgba(0,0,0,.3);user-select:none}
+</style>
 </head>
-<body onclick="document.body.innerHTML='<h1>スコア: '+(++i)+'</h1>'">
-<h1>スコア: 0</h1>
+<body onclick="this.innerHTML='<h1>🎯 '+(++i)+' 🎯</h1>'">
+<h1>👆 クリック！</h1>
 <script>i=0</script>
 </body>
 </html>
