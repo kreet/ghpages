@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多肉植物ちまちま植え</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            padding: 30px;
+            max-width: 1000px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #2e7d32;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #66bb6a;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .game-area {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .plant-palette {
+            flex: 0 0 250px;
+            background: #f1f8e9;
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #aed581;
+        }
+
+        .palette-title {
+            font-weight: bold;
+            color: #558b2f;
+            margin-bottom: 15px;
+            text-align: center;
+            font-size: 16px;
+        }
+
+        .plant-list {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .plant-item {
+            background: white;
+            border: 2px solid #c5e1a5;
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .plant-item:hover {
+            transform: scale(1.05);
+            border-color: #7cb342;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .plant-item.selected {
+            border-color: #558b2f;
+            background: #e8f5e9;
+            box-shadow: 0 0 0 3px rgba(85, 139, 47, 0.2);
+        }
+
+        .plant-icon {
+            font-size: 32px;
+            margin-bottom: 5px;
+        }
+
+        .plant-name {
+            font-size: 11px;
+            color: #558b2f;
+            font-weight: 500;
+        }
+
+        .pot-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .pot-container {
+            position: relative;
+            width: 400px;
+            height: 400px;
+        }
+
+        .pot {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 350px;
+            height: 150px;
+            background: linear-gradient(180deg, #d4a373 0%, #b8865e 100%);
+            border-radius: 0 0 20px 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            z-index: 1;
+        }
+
+        .pot::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: 10px;
+            right: 10px;
+            height: 15px;
+            background: #d4a373;
+            border-radius: 5px 5px 0 0;
+        }
+
+        .soil {
+            position: absolute;
+            bottom: 150px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 370px;
+            height: 50px;
+            background: linear-gradient(180deg, #8b6f47 0%, #6f5639 100%);
+            border-radius: 50% 50% 0 0;
+            z-index: 2;
+        }
+
+        .planting-area {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 370px;
+            height: 250px;
+            z-index: 3;
+            cursor: crosshair;
+        }
+
+        .planted-succulent {
+            position: absolute;
+            font-size: 40px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            user-select: none;
+        }
+
+        .planted-succulent:hover {
+            transform: scale(1.1);
+            filter: brightness(1.2);
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .btn-clear {
+            background: #ef5350;
+            color: white;
+        }
+
+        .btn-clear:hover {
+            background: #e53935;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .btn-random {
+            background: #66bb6a;
+            color: white;
+        }
+
+        .btn-random:hover {
+            background: #4caf50;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .info {
+            margin-top: 15px;
+            text-align: center;
+            color: #558b2f;
+            font-size: 14px;
+            padding: 10px;
+            background: #f1f8e9;
+            border-radius: 8px;
+        }
+
+        .count {
+            font-weight: bold;
+            color: #2e7d32;
+        }
+
+        @media (max-width: 768px) {
+            .game-area {
+                flex-direction: column;
+            }
+            
+            .plant-palette {
+                flex: 1;
+            }
+            
+            .pot-container {
+                width: 100%;
+                max-width: 400px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌵 多肉植物ちまちま植え 🌱</h1>
+        <p class="subtitle">好きな多肉植物を選んで、素敵な寄せ植えを作ろう！</p>
+        
+        <div class="game-area">
+            <div class="plant-palette">
+                <div class="palette-title">🪴 多肉植物を選ぶ</div>
+                <div class="plant-list" id="plantList"></div>
+            </div>
+            
+            <div class="pot-area">
+                <div class="pot-container">
+                    <div class="planting-area" id="plantingArea"></div>
+                    <div class="soil"></div>
+                    <div class="pot"></div>
+                </div>
+                
+                <div class="controls">
+                    <button class="btn btn-random" onclick="randomPlant()">🎲 ランダム配置</button>
+                    <button class="btn btn-clear" onclick="clearAll()">🗑️ すべて消去</button>
+                </div>
+                
+                <div class="info">
+                    <p>植えた多肉植物: <span class="count" id="plantCount">0</span> 個</p>
+                    <p style="font-size: 12px; margin-top: 5px;">💡 多肉植物をクリックして選び、鉢の中をクリックして植えよう！<br>植えた植物をクリックすると削除できます。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 多肉植物データ
+        const succulents = [
+            { icon: '🌵', name: 'サボテン' },
+            { icon: '🪴', name: 'ハオルチア' },
+            { icon: '🌿', name: 'セダム' },
+            { icon: '🍀', name: 'クローバー' },
+            { icon: '🌱', name: 'グラプトペタラム' },
+            { icon: '🌾', name: 'エケベリア' },
+            { icon: '🌸', name: '桜吹雪' },
+            { icon: '🌼', name: '花月' },
+            { icon: '🌺', name: '火祭り' },
+            { icon: '🍃', name: 'グリーンネックレス' },
+            { icon: '💚', name: 'ラブチェーン' },
+            { icon: '⭐', name: '星の王子' }
+        ];
+
+        let selectedPlant = null;
+        let plantedCount = 0;
+
+        // 植物パレットを生成
+        function initPalette() {
+            const plantList = document.getElementById('plantList');
+            succulents.forEach((plant, index) => {
+                const plantItem = document.createElement('div');
+                plantItem.className = 'plant-item';
+                plantItem.innerHTML = `
+                    <div class="plant-icon">${plant.icon}</div>
+                    <div class="plant-name">${plant.name}</div>
+                `;
+                plantItem.onclick = () => selectPlant(index, plantItem);
+                plantList.appendChild(plantItem);
+            });
+            
+            // 最初の植物を選択
+            selectPlant(0, plantList.children[0]);
+        }
+
+        // 植物を選択
+        function selectPlant(index, element) {
+            document.querySelectorAll('.plant-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            element.classList.add('selected');
+            selectedPlant = succulents[index];
+        }
+
+        // 植物を植える
+        function plantSucculent(x, y) {
+            if (!selectedPlant) return;
+
+            const plantingArea = document.getElementById('plantingArea');
+            const planted = document.createElement('div');
+            planted.className = 'planted-succulent';
+            planted.textContent = selectedPlant.icon;
+            planted.style.left = (x - 20) + 'px';
+            planted.style.top = (y - 20) + 'px';
+            
+            // クリックで削除
+            planted.onclick = (e) => {
+                e.stopPropagation();
+                plantingArea.removeChild(planted);
+                plantedCount--;
+                updateCount();
+            };
+            
+            plantingArea.appendChild(planted);
+            plantedCount++;
+            updateCount();
+        }
+
+        // クリックイベント
+        document.getElementById('plantingArea').addEventListener('click', (e) => {
+            const rect = e.target.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            plantSucculent(x, y);
+        });
+
+        // ランダム配置
+        function randomPlant() {
+            const plantingArea = document.getElementById('plantingArea');
+            const count = Math.floor(Math.random() * 8) + 5; // 5-12個
+            
+            for (let i = 0; i < count; i++) {
+                const randomPlant = succulents[Math.floor(Math.random() * succulents.length)];
+                const planted = document.createElement('div');
+                planted.className = 'planted-succulent';
+                planted.textContent = randomPlant.icon;
+                
+                // ランダムな位置
+                const x = Math.random() * 320 + 25;
+                const y = Math.random() * 200 + 25;
+                planted.style.left = x + 'px';
+                planted.style.top = y + 'px';
+                
+                // ランダムなサイズ
+                const size = Math.random() * 20 + 30;
+                planted.style.fontSize = size + 'px';
+                
+                planted.onclick = (e) => {
+                    e.stopPropagation();
+                    plantingArea.removeChild(planted);
+                    plantedCount--;
+                    updateCount();
+                };
+                
+                plantingArea.appendChild(planted);
+                plantedCount++;
+            }
+            updateCount();
+        }
+
+        // すべて消去
+        function clearAll() {
+            const plantingArea = document.getElementById('plantingArea');
+            plantingArea.innerHTML = '';
+            plantedCount = 0;
+            updateCount();
+        }
+
+        // カウント更新
+        function updateCount() {
+            document.getElementById('plantCount').textContent = plantedCount;
+        }
+
+        // 初期化
+        initPalette();
+    </script>
+</body>
+</html>
