@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>リズムダンジョンRPG</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Georgia', serif;
+            background: linear-gradient(135deg, #2c1810 0%, #1a0f0a 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #f5e6d3;
+        }
+
+        #gameContainer {
+            background: linear-gradient(135deg, #3d2817 0%, #2a1810 100%);
+            border: 4px solid #8b7355;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 50px rgba(0, 0, 0, 0.8), inset 0 0 30px rgba(0, 0, 0, 0.5);
+            max-width: 900px;
+            width: 95%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #ffd700;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 215, 0, 0.5);
+            margin-bottom: 20px;
+            font-size: 2.5em;
+            letter-spacing: 2px;
+        }
+
+        #stats {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .stat {
+            background: linear-gradient(135deg, #4a3520 0%, #362515 100%);
+            padding: 12px 25px;
+            border-radius: 8px;
+            border: 2px solid #8b7355;
+            color: #f5e6d3;
+            font-size: 1.1em;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            min-width: 120px;
+        }
+
+        .stat-label {
+            font-size: 0.8em;
+            color: #c9b89a;
+            margin-bottom: 3px;
+        }
+
+        .stat-value {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #ffd700;
+        }
+
+        #gameScreen {
+            background: linear-gradient(180deg, #1a1410 0%, #2d2420 100%);
+            border: 3px solid #8b7355;
+            border-radius: 10px;
+            padding: 25px;
+            margin: 20px 0;
+            position: relative;
+            min-height: 400px;
+        }
+
+        #dungeon {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        #dungeonFloor {
+            font-size: 1.5em;
+            color: #ffd700;
+            margin-bottom: 15px;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+        }
+
+        #enemy {
+            font-size: 4em;
+            margin: 20px 0;
+            animation: enemyFloat 2s ease-in-out infinite;
+        }
+
+        @keyframes enemyFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        #enemyName {
+            font-size: 1.3em;
+            color: #ff6b6b;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        #enemyHPBar {
+            width: 80%;
+            height: 25px;
+            background: #2d1810;
+            border: 2px solid #8b7355;
+            border-radius: 12px;
+            margin: 10px auto;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #enemyHPFill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff4444 0%, #ff6b6b 100%);
+            transition: width 0.5s ease;
+            box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+
+        #enemyHPText {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+            font-size: 0.9em;
+        }
+
+        #rhythmSection {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 25px;
+            border-radius: 10px;
+            border: 2px solid #6b5840;
+            margin-top: 20px;
+        }
+
+        #rhythmTitle {
+            text-align: center;
+            font-size: 1.2em;
+            color: #ffd700;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        #rhythmBar {
+            position: relative;
+            width: 100%;
+            height: 80px;
+            background: #1a1410;
+            border: 3px solid #8b7355;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            overflow: hidden;
+            box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.8);
+        }
+
+        #rhythmProgress {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #4a90e2 0%, #5fb3f6 50%, #ffd700 100%);
+            transition: width 0.05s linear;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+        }
+
+        .perfect-zone {
+            position: absolute;
+            top: 0;
+            right: 10%;
+            width: 20%;
+            height: 100%;
+            background: rgba(255, 215, 0, 0.3);
+            border-left: 4px solid #ffd700;
+            border-right: 4px solid #ffd700;
+            box-shadow: inset 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+
+        #beatMarker {
+            position: absolute;
+            top: 50%;
+            right: 20%;
+            transform: translateY(-50%);
+            width: 8px;
+            height: 60px;
+            background: #ffd700;
+            border-radius: 4px;
+            box-shadow: 0 0 15px #ffd700;
+            animation: markerPulse 0.6s ease-in-out infinite;
+            z-index: 10;
+        }
+
+        #beatMarker::before {
+            content: '⚔️';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2em;
+        }
+
+        @keyframes markerPulse {
+            0%, 100% {
+                opacity: 1;
+                transform: translateY(-50%) scale(1);
+                box-shadow: 0 0 15px #ffd700;
+            }
+            50% {
+                opacity: 0.8;
+                transform: translateY(-50%) scale(1.2);
+                box-shadow: 0 0 25px #ffd700;
+            }
+        }
+
+        #beatCounter {
+            position: absolute;
+            top: -40px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #ffd700;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.8), 2px 2px 4px rgba(0, 0, 0, 0.8);
+            min-width: 80px;
+            text-align: center;
+        }
+
+        .beat-flash {
+            animation: counterFlash 0.3s ease-out;
+        }
+
+        @keyframes counterFlash {
+            0% {
+                transform: translateX(-50%) scale(1);
+                color: #ffd700;
+            }
+            50% {
+                transform: translateX(-50%) scale(1.4);
+                color: #fff;
+                text-shadow: 0 0 25px #ffd700, 2px 2px 4px rgba(0, 0, 0, 0.8);
+            }
+            100% {
+                transform: translateX(-50%) scale(1);
+                color: #ffd700;
+            }
+        }
+
+        #timingGuide {
+            text-align: center;
+            color: #c9b89a;
+            font-size: 1.1em;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+        }
+
+        #timingGuide .highlight {
+            color: #ffd700;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+
+        #controls {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #6b4423 0%, #4a2e1a 100%);
+            color: #ffd700;
+            border: 3px solid #8b7355;
+            padding: 15px 40px;
+            font-size: 1.2em;
+            border-radius: 10px;
+            cursor: pointer;
+            font-family: 'Georgia', serif;
+            font-weight: bold;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s;
+            margin: 5px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        button:hover:not(:disabled) {
+            background: linear-gradient(135deg, #8b5a3c 0%, #6b4423 100%);
+            box-shadow: 0 5px 20px rgba(139, 115, 85, 0.5);
+            transform: translateY(-2px);
+        }
+
+        button:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        #message {
+            text-align: center;
+            font-size: 1.4em;
+            margin: 15px 0;
+            min-height: 35px;
+            font-weight: bold;
+        }
+
+        .perfect {
+            color: #ffd700 !important;
+            animation: perfectShine 0.6s ease-in-out;
+        }
+
+        @keyframes perfectShine {
+            0%, 100% {
+                transform: scale(1);
+                text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            }
+            50% {
+                transform: scale(1.15);
+                text-shadow: 0 0 20px #ffd700, 2px 2px 4px rgba(0, 0, 0, 0.8);
+            }
+        }
+
+        .good {
+            color: #90ee90 !important;
+        }
+
+        .miss {
+            color: #ff4444 !important;
+        }
+
+        #instructions {
+            background: rgba(0, 0, 0, 0.4);
+            border: 2px solid #6b5840;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            color: #c9b89a;
+            font-size: 0.95em;
+            line-height: 1.8;
+        }
+
+        #instructions h3 {
+            color: #ffd700;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        #instructions ul {
+            list-style: none;
+            padding-left: 10px;
+        }
+
+        #instructions li {
+            margin: 8px 0;
+            padding-left: 25px;
+            position: relative;
+        }
+
+        #instructions li::before {
+            content: '⚔';
+            position: absolute;
+            left: 0;
+            color: #ffd700;
+        }
+
+        .damage-text {
+            position: absolute;
+            top: 30%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 3em;
+            font-weight: bold;
+            color: #ff4444;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 10px #ff4444;
+            animation: damageFloat 1s ease-out forwards;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        @keyframes damageFloat {
+            0% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -150%) scale(1.5);
+            }
+        }
+
+        .victory-text {
+            color: #ffd700;
+            font-size: 2em;
+            animation: victoryPulse 0.5s ease-in-out;
+        }
+
+        @keyframes victoryPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <h1>⚔️ リズムダンジョンRPG ⚔️</h1>
+        
+        <div id="stats">
+            <div class="stat">
+                <div class="stat-label">階層</div>
+                <div class="stat-value" id="floor">1F</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">スコア</div>
+                <div class="stat-value" id="score">0</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">コンボ</div>
+                <div class="stat-value" id="combo">0</div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">精度</div>
+                <div class="stat-value" id="accuracy">100%</div>
+            </div>
+        </div>
+
+        <div id="message">冒険の準備はいいですか？</div>
+
+        <div id="gameScreen">
+            <div id="dungeon">
+                <div id="dungeonFloor">第1階層</div>
+                <div id="enemy">👹</div>
+                <div id="enemyName">ゴブリン</div>
+                <div id="enemyHPBar">
+                    <div id="enemyHPFill" style="width: 100%;"></div>
+                    <div id="enemyHPText">HP: 100/100</div>
+                </div>
+            </div>
+
+            <div id="rhythmSection">
+                <div id="timingGuide">
+                    カウントが <span class="highlight">「0」</span> になる瞬間に攻撃！
+                </div>
+                <div id="rhythmTitle">⚔️ リズムで攻撃 ⚔️</div>
+                <div id="rhythmBar">
+                    <div id="beatCounter">3</div>
+                    <div id="rhythmProgress"></div>
+                    <div class="perfect-zone"></div>
+                    <div id="beatMarker"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="controls">
+            <button id="startBtn" onclick="startGame()">冒険開始</button>
+            <button id="attackBtn" onclick="attack()" disabled>攻撃 [SPACE]</button>
+        </div>
+
+        <div id="instructions">
+            <h3>📜 遊び方</h3>
+            <ul>
+                <li><strong>カウントダウン</strong>（3→2→1→0）を見て、<strong>「0」になる瞬間</strong>に攻撃ボタンを押そう！</li>
+                <li><strong>青いゲージ</strong>が<strong>金色のゾーン（右端）</strong>に到達したタイミングがベスト！</li>
+                <li><strong>⚔️マーカー</strong>の位置で攻撃すると「PERFECT」で大ダメージ！</li>
+                <li>タイミングが良いほど高いダメージを与えられます</li>
+                <li>敵を倒すと次の階層へ進み、より強い敵が登場します</li>
+                <li>ミスするとコンボがリセットされます</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        let score = 0;
+        let combo = 0;
+        let floor = 1;
+        let isPlaying = false;
+        let totalAttempts = 0;
+        let perfectHits = 0;
+        let goodHits = 0;
+        let beatDuration = 2000;
+        let currentBeatStartTime = 0;
+        let rhythmInterval;
+        
+        let currentEnemy = {
+            name: 'ゴブリン',
+            emoji: '👹',
+            maxHP: 100,
+            currentHP: 100
+        };
+
+        const enemies = [
+            { name: 'ゴブリン', emoji: '👹', baseHP: 100 },
+            { name: 'オーク', emoji: '👺', baseHP: 150 },
+            { name: 'トロール', emoji: '🧟', baseHP: 200 },
+            { name: 'ドラゴン', emoji: '🐉', baseHP: 300 },
+            { name: 'デーモン', emoji: '😈', baseHP: 400 },
+            { name: 'ダークロード', emoji: '👿', baseHP: 500 }
+        ];
+
+        const elements = {
+            floor: document.getElementById('floor'),
+            score: document.getElementById('score'),
+            combo: document.getElementById('combo'),
+            accuracy: document.getElementById('accuracy'),
+            message: document.getElementById('message'),
+            dungeonFloor: document.getElementById('dungeonFloor'),
+            enemy: document.getElementById('enemy'),
+            enemyName: document.getElementById('enemyName'),
+            enemyHPFill: document.getElementById('enemyHPFill'),
+            enemyHPText: document.getElementById('enemyHPText'),
+            rhythmProgress: document.getElementById('rhythmProgress'),
+            beatCounter: document.getElementById('beatCounter'),
+            startBtn: document.getElementById('startBtn'),
+            attackBtn: document.getElementById('attackBtn'),
+            gameScreen: document.getElementById('gameScreen')
+        };
+
+        function updateRhythmBar() {
+            if (!isPlaying) return;
+            
+            currentBeatStartTime = Date.now();
+            elements.rhythmProgress.style.transition = 'none';
+            elements.rhythmProgress.style.width = '0%';
+            
+            setTimeout(() => {
+                elements.rhythmProgress.style.transition = `width ${beatDuration}ms linear`;
+                elements.rhythmProgress.style.width = '100%';
+            }, 50);
+            
+            updateBeatCounter();
+        }
+
+        function updateBeatCounter() {
+            let count = 3;
+            elements.beatCounter.textContent = count;
+            elements.beatCounter.classList.add('beat-flash');
+            
+            const counterInterval = setInterval(() => {
+                count--;
+                if (count >= 0) {
+                    elements.beatCounter.textContent = count;
+                    elements.beatCounter.classList.remove('beat-flash');
+                    setTimeout(() => elements.beatCounter.classList.add('beat-flash'), 10);
+                } else {
+                    clearInterval(counterInterval);
+                }
+            }, beatDuration / 4);
+        }
+
+        function checkBeatTiming() {
+            const elapsed = Date.now() - currentBeatStartTime;
+            const normalizedTime = elapsed / beatDuration;
+            
+            if (normalizedTime >= 0.85 && normalizedTime <= 0.95) {
+                return 'perfect';
+            } else if (normalizedTime >= 0.75 && normalizedTime <= 1.0) {
+                return 'good';
+            } else {
+                return 'miss';
+            }
+        }
+
+        function showDamageText(damage) {
+            const damageText = document.createElement('div');
+            damageText.className = 'damage-text';
+            damageText.textContent = `-${damage}`;
+            elements.gameScreen.appendChild(damageText);
+            
+            setTimeout(() => {
+                damageText.remove();
+            }, 1000);
+        }
+
+        function attack() {
+            if (!isPlaying) return;
+            
+            totalAttempts++;
+            const timing = checkBeatTiming();
+            
+            let damage = 0;
+            let message = '';
+            let messageClass = '';
+            
+            if (timing === 'perfect') {
+                perfectHits++;
+                damage = 40 + (combo * 5);
+                combo++;
+                message = '⚔️ PERFECT HIT! ⚔️';
+                messageClass = 'perfect';
+            } else if (timing === 'good') {
+                goodHits++;
+                damage = 20 + (combo * 2);
+                combo++;
+                message = '✓ GOOD HIT!';
+                messageClass = 'good';
+            } else {
+                damage = 5;
+                combo = 0;
+                message = '✗ MISS...';
+                messageClass = 'miss';
+            }
+
+            score += damage * floor;
+            currentEnemy.currentHP = Math.max(0, currentEnemy.currentHP - damage);
+            
+            showDamageText(damage);
+            showMessage(message, messageClass);
+            updateDisplay();
+            updateEnemyHP();
+
+            if (currentEnemy.currentHP <= 0) {
+                setTimeout(() => {
+                    nextFloor();
+                }, 1000);
+            }
+        }
+
+        function updateEnemyHP() {
+            const hpPercent = (currentEnemy.currentHP / currentEnemy.maxHP) * 100;
+            elements.enemyHPFill.style.width = hpPercent + '%';
+            elements.enemyHPText.textContent = `HP: ${currentEnemy.currentHP}/${currentEnemy.maxHP}`;
+        }
+
+        function nextFloor() {
+            floor++;
+            
+            if (floor > 20) {
+                gameWin();
+                return;
+            }
+
+            const enemyIndex = Math.min(Math.floor((floor - 1) / 3), enemies.length - 1);
+            const enemyTemplate = enemies[enemyIndex];
+            
+            currentEnemy = {
+                name: enemyTemplate.name,
+                emoji: enemyTemplate.emoji,
+                maxHP: enemyTemplate.baseHP + ((floor - 1) * 50),
+                currentHP: enemyTemplate.baseHP + ((floor - 1) * 50)
+            };
+
+            elements.dungeonFloor.textContent = `第${floor}階層`;
+            elements.enemy.textContent = currentEnemy.emoji;
+            elements.enemyName.textContent = currentEnemy.name;
+            updateEnemyHP();
+            
+            showMessage(`🎉 ${currentEnemy.name}が現れた！`, 'victory-text');
+        }
+
+        function showMessage(text, className = '') {
+            elements.message.textContent = text;
+            elements.message.className = className;
+        }
+
+        function updateDisplay() {
+            elements.floor.textContent = floor + 'F';
+            elements.score.textContent = score;
+            elements.combo.textContent = combo;
+            
+            if (totalAttempts > 0) {
+                const accuracy = Math.round(((perfectHits + goodHits) / totalAttempts) * 100);
+                elements.accuracy.textContent = accuracy + '%';
+            }
+        }
+
+        function startGame() {
+            isPlaying = true;
+            score = 0;
+            combo = 0;
+            floor = 1;
+            totalAttempts = 0;
+            perfectHits = 0;
+            goodHits = 0;
+            
+            currentEnemy = {
+                name: 'ゴブリン',
+                emoji: '👹',
+                maxHP: 100,
+                currentHP: 100
+            };
+
+            elements.dungeonFloor.textContent = '第1階層';
+            elements.enemy.textContent = '👹';
+            elements.enemyName.textContent = 'ゴブリン';
+            
+            showMessage('リズムに合わせて攻撃だ！');
+            updateDisplay();
+            updateEnemyHP();
+            
+            elements.startBtn.disabled = true;
+            elements.attackBtn.disabled = false;
+            
+            updateRhythmBar();
+            
+            rhythmInterval = setInterval(() => {
+                if (isPlaying) {
+                    updateRhythmBar();
+                }
+            }, beatDuration);
+        }
+
+        function gameOver() {
+            isPlaying = false;
+            clearInterval(rhythmInterval);
+            
+            showMessage(`💀 GAME OVER... 到達階層: ${floor}F`, 'miss');
+            
+            elements.startBtn.disabled = false;
+            elements.attackBtn.disabled = true;
+            
+            elements.rhythmProgress.style.transition = 'none';
+            elements.rhythmProgress.style.width = '0%';
+            elements.beatCounter.textContent = '0';
+        }
+
+        function gameWin() {
+            isPlaying = false;
+            clearInterval(rhythmInterval);
+            
+            showMessage(`🏆 ダンジョン制覇！ 最終スコア: ${score}`, 'victory-text');
+            
+            elements.startBtn.disabled = false;
+            elements.attackBtn.disabled = true;
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (isPlaying) {
+                    attack();
+                } else if (!elements.startBtn.disabled) {
+                    startGame();
+                }
+            }
+        });
+
+        updateDisplay();
+    </script>
+</body>
+</html>
