@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>おにぎりクリッカー</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #333;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 50px rgba(0,0,0,0.3);
+            max-width: 800px;
+            width: 90%;
+        }
+        h1 {
+            text-align: center;
+            color: #764ba2;
+            margin-bottom: 20px;
+        }
+        .stats {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .onigiri-count {
+            font-size: 48px;
+            font-weight: bold;
+            color: #667eea;
+            margin: 10px 0;
+        }
+        .per-second {
+            font-size: 18px;
+            color: #666;
+        }
+        .onigiri-button {
+            display: block;
+            margin: 0 auto 30px;
+            font-size: 120px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.1s;
+            user-select: none;
+        }
+        .onigiri-button:hover {
+            transform: scale(1.05);
+        }
+        .onigiri-button:active {
+            transform: scale(0.95);
+        }
+        .shop {
+            border-top: 2px solid #eee;
+            padding-top: 20px;
+        }
+        .shop h2 {
+            color: #764ba2;
+            margin-bottom: 15px;
+        }
+        .shop-item {
+            background: #f8f9fa;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .shop-item-info {
+            flex: 1;
+        }
+        .shop-item-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+        .shop-item-description {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+        }
+        .shop-item-stats {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+        .shop-item button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        .shop-item button:hover {
+            background: #5568d3;
+        }
+        .shop-item button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .floating-number {
+            position: fixed;
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+            pointer-events: none;
+            animation: float-up 1s ease-out forwards;
+        }
+        @keyframes float-up {
+            to {
+                transform: translateY(-100px);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🍙 おにぎりクリッカー 🍙</h1>
+        
+        <div class="stats">
+            <div class="onigiri-count" id="onigiriCount">0</div>
+            <div>おにぎり</div>
+            <div class="per-second">毎秒 <span id="perSecond">0</span> おにぎり</div>
+        </div>
+
+        <button class="onigiri-button" id="onigiriButton">🍙</button>
+
+        <div class="shop">
+            <h2>🏪 ショップ</h2>
+            <div id="shopItems"></div>
+        </div>
+    </div>
+
+    <script>
+        let onigiri = 0;
+        let onigiriPerSecond = 0;
+        let clickPower = 1;
+
+        const shopItems = [
+            {
+                id: 'grandma',
+                name: 'おばあちゃん',
+                description: 'おにぎりを握ってくれます',
+                baseCost: 10,
+                production: 0.1,
+                owned: 0
+            },
+            {
+                id: 'chef',
+                name: '料理人',
+                description: 'プロの技でおにぎりを量産',
+                baseCost: 100,
+                production: 1,
+                owned: 0
+            },
+            {
+                id: 'factory',
+                name: 'おにぎり工場',
+                description: '機械で自動生産',
+                baseCost: 1000,
+                production: 8,
+                owned: 0
+            },
+            {
+                id: 'farm',
+                name: '米農場',
+                description: '新鮮な米から作ります',
+                baseCost: 10000,
+                production: 50,
+                owned: 0
+            },
+            {
+                id: 'robot',
+                name: 'おにぎりロボット',
+                description: 'AI搭載の最新技術',
+                baseCost: 100000,
+                production: 400,
+                owned: 0
+            }
+        ];
+
+        function getCost(item) {
+            return Math.floor(item.baseCost * Math.pow(1.15, item.owned));
+        }
+
+        function updateDisplay() {
+            document.getElementById('onigiriCount').textContent = Math.floor(onigiri).toLocaleString();
+            document.getElementById('perSecond').textContent = onigiriPerSecond.toFixed(1);
+        }
+
+        function updateShop() {
+            const shopContainer = document.getElementById('shopItems');
+            shopContainer.innerHTML = '';
+
+            shopItems.forEach(item => {
+                const cost = getCost(item);
+                const canAfford = onigiri >= cost;
+
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'shop-item';
+                itemDiv.innerHTML = `
+                    <div class="shop-item-info">
+                        <div class="shop-item-name">${item.name}</div>
+                        <div class="shop-item-description">${item.description}</div>
+                        <div class="shop-item-stats">生産: ${item.production}/秒 | 所有数: ${item.owned}</div>
+                    </div>
+                    <button ${!canAfford ? 'disabled' : ''}>
+                        ${cost.toLocaleString()} 🍙
+                    </button>
+                `;
+
+                const button = itemDiv.querySelector('button');
+                button.addEventListener('click', () => buyItem(item));
+
+                shopContainer.appendChild(itemDiv);
+            });
+        }
+
+        function buyItem(item) {
+            const cost = getCost(item);
+            if (onigiri >= cost) {
+                onigiri -= cost;
+                item.owned++;
+                calculateProduction();
+                updateDisplay();
+                updateShop();
+            }
+        }
+
+        function calculateProduction() {
+            onigiriPerSecond = 0;
+            shopItems.forEach(item => {
+                onigiriPerSecond += item.production * item.owned;
+            });
+        }
+
+        function createFloatingNumber(x, y, value) {
+            const floatingNum = document.createElement('div');
+            floatingNum.className = 'floating-number';
+            floatingNum.textContent = `+${value}`;
+            floatingNum.style.left = x + 'px';
+            floatingNum.style.top = y + 'px';
+            document.body.appendChild(floatingNum);
+
+            setTimeout(() => {
+                floatingNum.remove();
+            }, 1000);
+        }
+
+        document.getElementById('onigiriButton').addEventListener('click', (e) => {
+            onigiri += clickPower;
+            updateDisplay();
+            updateShop();
+            createFloatingNumber(e.clientX, e.clientY, clickPower);
+        });
+
+        setInterval(() => {
+            onigiri += onigiriPerSecond / 10;
+            updateDisplay();
+            updateShop();
+        }, 100);
+
+        updateDisplay();
+        updateShop();
+    </script>
+</body>
+</html>
