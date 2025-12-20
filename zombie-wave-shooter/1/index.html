@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zombie Wave Shooter</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: white;
+            overflow: hidden;
+        }
+        #gameCanvas {
+            border: 3px solid #ff0000;
+            background: #2a2a2a;
+            cursor: crosshair;
+        }
+        .hud {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            font-size: 20px;
+            text-shadow: 2px 2px 4px black;
+            z-index: 10;
+        }
+        .hud-item {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            background: rgba(0,0,0,0.7);
+            border-left: 4px solid #ff0000;
+        }
+        .wave {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px black;
+            background: rgba(0,0,0,0.7);
+            padding: 10px 20px;
+            border: 2px solid #ff0000;
+        }
+        .weapon-info {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            font-size: 18px;
+            text-shadow: 2px 2px 4px black;
+            background: rgba(0,0,0,0.8);
+            padding: 12px 16px;
+            border: 2px solid #ff0000;
+        }
+        .game-over, .wave-clear {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.95);
+            padding: 40px 60px;
+            border: 4px solid #ff0000;
+            text-align: center;
+            display: none;
+            z-index: 100;
+        }
+        .game-over h1 {
+            font-size: 48px;
+            color: #ff0000;
+            margin-bottom: 20px;
+        }
+        .wave-clear h2 {
+            font-size: 40px;
+            color: #00ff00;
+            margin-bottom: 20px;
+        }
+        button {
+            background: #ff0000;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 20px;
+            cursor: pointer;
+            margin-top: 20px;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #cc0000;
+        }
+        .instructions {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            font-size: 14px;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="1200" height="700"></canvas>
+    
+    <div class="hud">
+        <div class="hud-item">HP: <span id="hp">100</span></div>
+        <div class="hud-item">お金: $<span id="money">0</span></div>
+        <div class="hud-item">キル数: <span id="kills">0</span></div>
+    </div>
+    
+    <div class="wave">
+        Wave <span id="wave">1</span><br>
+        敵: <span id="enemiesLeft">0</span>
+    </div>
+    
+    <div class="weapon-info">
+        <div>武器: <span id="weaponName">Pistol</span></div>
+        <div>弾薬: <span id="ammo">15</span> / <span id="reserve">∞</span></div>
+    </div>
+    
+    <div class="instructions">
+        WASD: 移動 | マウス: 照準/射撃 | R: リロード | 1-4: 武器切替
+    </div>
+    
+    <div class="game-over" id="gameOver">
+        <h1>GAME OVER</h1>
+        <p>Wave: <span id="finalWave"></span></p>
+        <p>キル数: <span id="finalKills"></span></p>
+        <button onclick="location.reload()">もう一度プレイ</button>
+    </div>
+    
+    <div class="wave-clear" id="waveClear">
+        <h2>WAVE CLEAR!</h2>
+        <p id="waveReward"></p>
+        <button onclick="nextWave()">次のWaveへ</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const player = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            radius: 15,
+            speed: 4,
+            hp: 100,
+            maxHp: 100,
+            angle: 0,
+            money: 0,
+            kills: 0
+        };
+
+        const weapons = {
+            pistol: { name: 'Pistol', damage: 25, fireRate: 300, ammo: 15, maxAmmo: 15, reserve: Infinity, reloadTime: 1000, cost: 0 },
+            shotgun: { name: 'Shotgun', damage: 20, fireRate: 800, ammo: 8, maxAmmo: 8, reserve: 40, reloadTime: 1500, pellets: 6, cost: 200 },
+            rifle: { name: 'Rifle', damage: 35, fireRate: 150, ammo: 30, maxAmmo: 30, reserve: 120, reloadTime: 1800, cost: 500 },
+            smg: { name: 'SMG', damage: 18, fireRate: 100, ammo: 40, maxAmmo: 40, reserve: 200, reloadTime: 1500, cost: 350 }
+        };
+
+        let currentWeapon = 'pistol';
+        let canShoot = true;
+        let isReloading = false;
+
+        const keys = {};
+        const enemies = [];
+        const bullets = [];
+        const particles = [];
+        
+        let wave = 1;
+        let enemiesInWave = 0;
+        let enemiesKilled = 0;
+        let gameRunning = true;
+        let waveActive = false;
+
+        const mousePos = { x: 0, y: 0 };
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mousePos.x = e.clientX - rect.left;
+            mousePos.y = e.clientY - rect.top;
+            player.angle = Math.atan2(mousePos.y - player.y, mousePos.x - player.x);
+        });
+
+        canvas.addEventListener('click', () => {
+            if (gameRunning && !isReloading) shoot();
+        });
+
+        document.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+            if (e.key.toLowerCase() === 'r') reload();
+            if (e.key === '1') switchWeapon('pistol');
+            if (e.key === '2' && player.money >= weapons.shotgun.cost) switchWeapon('shotgun');
+            if (e.key === '3' && player.money >= weapons.smg.cost) switchWeapon('smg');
+            if (e.key === '4' && player.money >= weapons.rifle.cost) switchWeapon('rifle');
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+        });
+
+        function switchWeapon(weaponName) {
+            if (weapons[weaponName].cost <= player.money || weapons[currentWeapon].cost > 0) {
+                if (weapons[weaponName].cost > 0 && weapons[weaponName].reserve === weapons[weaponName].maxAmmo * 5) {
+                    player.money -= weapons[weaponName].cost;
+                }
+                currentWeapon = weaponName;
+                updateHUD();
+            }
+        }
+
+        function shoot() {
+            const weapon = weapons[currentWeapon];
+            if (!canShoot || weapon.ammo <= 0) return;
+
+            if (weapon.pellets) {
+                for (let i = 0; i < weapon.pellets; i++) {
+                    const spread = (Math.random() - 0.5) * 0.3;
+                    bullets.push({
+                        x: player.x,
+                        y: player.y,
+                        angle: player.angle + spread,
+                        speed: 12,
+                        damage: weapon.damage,
+                        radius: 3
+                    });
+                }
+            } else {
+                bullets.push({
+                    x: player.x,
+                    y: player.y,
+                    angle: player.angle,
+                    speed: 15,
+                    damage: weapon.damage,
+                    radius: 4
+                });
+            }
+
+            weapon.ammo--;
+            canShoot = false;
+            setTimeout(() => canShoot = true, weapon.fireRate);
+            updateHUD();
+        }
+
+        function reload() {
+            const weapon = weapons[currentWeapon];
+            if (isReloading || weapon.ammo === weapon.maxAmmo || weapon.reserve === 0) return;
+
+            isReloading = true;
+            setTimeout(() => {
+                const needed = weapon.maxAmmo - weapon.ammo;
+                const available = weapon.reserve === Infinity ? needed : Math.min(needed, weapon.reserve);
+                weapon.ammo += available;
+                if (weapon.reserve !== Infinity) weapon.reserve -= available;
+                isReloading = false;
+                updateHUD();
+            }, weapon.reloadTime);
+        }
+
+        function spawnEnemy() {
+            const side = Math.floor(Math.random() * 4);
+            let x, y;
+            
+            if (side === 0) { x = Math.random() * canvas.width; y = -20; }
+            else if (side === 1) { x = canvas.width + 20; y = Math.random() * canvas.height; }
+            else if (side === 2) { x = Math.random() * canvas.width; y = canvas.height + 20; }
+            else { x = -20; y = Math.random() * canvas.height; }
+
+            const types = ['normal', 'fast', 'tank'];
+            const weights = [70, 20, 10];
+            const rand = Math.random() * 100;
+            let type = 'normal';
+            let sum = 0;
+            for (let i = 0; i < types.length; i++) {
+                sum += weights[i];
+                if (rand < sum) {
+                    type = types[i];
+                    break;
+                }
+            }
+
+            const enemyStats = {
+                normal: { hp: 50 + wave * 10, speed: 1.5 + wave * 0.1, radius: 12, color: '#00ff00', reward: 25 },
+                fast: { hp: 30 + wave * 5, speed: 3 + wave * 0.15, radius: 10, color: '#ffff00', reward: 35 },
+                tank: { hp: 150 + wave * 30, speed: 0.8 + wave * 0.05, radius: 18, color: '#ff00ff', reward: 60 }
+            };
+
+            const stats = enemyStats[type];
+            enemies.push({
+                x, y,
+                type,
+                hp: stats.hp,
+                maxHp: stats.hp,
+                speed: stats.speed,
+                radius: stats.radius,
+                color: stats.color,
+                reward: stats.reward
+            });
+        }
+
+        function startWave() {
+            wave++;
+            enemiesInWave = 5 + wave * 3;
+            enemiesKilled = 0;
+            waveActive = true;
+            document.getElementById('wave').textContent = wave;
+            
+            for (let i = 0; i < Math.min(enemiesInWave, 10); i++) {
+                setTimeout(() => spawnEnemy(), i * 500);
+            }
+        }
+
+        function nextWave() {
+            document.getElementById('waveClear').style.display = 'none';
+            startWave();
+        }
+
+        function updatePlayer() {
+            let dx = 0, dy = 0;
+            if (keys['w'] || keys['arrowup']) dy -= 1;
+            if (keys['s'] || keys['arrowdown']) dy += 1;
+            if (keys['a'] || keys['arrowleft']) dx -= 1;
+            if (keys['d'] || keys['arrowright']) dx += 1;
+
+            if (dx !== 0 || dy !== 0) {
+                const length = Math.sqrt(dx * dx + dy * dy);
+                dx /= length;
+                dy /= length;
+                player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x + dx * player.speed));
+                player.y = Math.max(player.radius, Math.min(canvas.height - player.radius, player.y + dy * player.speed));
+            }
+        }
+
+        function updateEnemies() {
+            if (waveActive && enemies.length < 15 && enemiesKilled + enemies.length < enemiesInWave) {
+                if (Math.random() < 0.02) spawnEnemy();
+            }
+
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const enemy = enemies[i];
+                const dx = player.x - enemy.x;
+                const dy = player.y - enemy.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                enemy.x += (dx / dist) * enemy.speed;
+                enemy.y += (dy / dist) * enemy.speed;
+
+                if (dist < player.radius + enemy.radius) {
+                    player.hp -= 10;
+                    enemies.splice(i, 1);
+                    if (player.hp <= 0) gameOver();
+                }
+            }
+        }
+
+        function updateBullets() {
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const bullet = bullets[i];
+                bullet.x += Math.cos(bullet.angle) * bullet.speed;
+                bullet.y += Math.sin(bullet.angle) * bullet.speed;
+
+                if (bullet.x < 0 || bullet.x > canvas.width || bullet.y < 0 || bullet.y > canvas.height) {
+                    bullets.splice(i, 1);
+                    continue;
+                }
+
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    const enemy = enemies[j];
+                    const dx = bullet.x - enemy.x;
+                    const dy = bullet.y - enemy.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < enemy.radius + bullet.radius) {
+                        enemy.hp -= bullet.damage;
+                        bullets.splice(i, 1);
+
+                        for (let k = 0; k < 5; k++) {
+                            particles.push({
+                                x: enemy.x,
+                                y: enemy.y,
+                                vx: (Math.random() - 0.5) * 4,
+                                vy: (Math.random() - 0.5) * 4,
+                                life: 30,
+                                color: enemy.color
+                            });
+                        }
+
+                        if (enemy.hp <= 0) {
+                            player.money += enemy.reward;
+                            player.kills++;
+                            enemiesKilled++;
+                            enemies.splice(j, 1);
+
+                            if (waveActive && enemiesKilled >= enemiesInWave) {
+                                waveActive = false;
+                                const reward = wave * 100;
+                                player.money += reward;
+                                document.getElementById('waveReward').textContent = `ボーナス: $${reward}`;
+                                document.getElementById('waveClear').style.display = 'block';
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life--;
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+        }
+
+        function drawPlayer() {
+            ctx.fillStyle = '#0088ff';
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(player.x, player.y);
+            ctx.lineTo(
+                player.x + Math.cos(player.angle) * (player.radius + 10),
+                player.y + Math.sin(player.angle) * (player.radius + 10)
+            );
+            ctx.stroke();
+
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(player.x - 20, player.y - 25, 40, 4);
+            ctx.fillStyle = '#00ff00';
+            ctx.fillRect(player.x - 20, player.y - 25, 40 * (player.hp / player.maxHp), 4);
+        }
+
+        function drawEnemies() {
+            enemies.forEach(enemy => {
+                ctx.fillStyle = enemy.color;
+                ctx.beginPath();
+                ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#ff0000';
+                ctx.fillRect(enemy.x - enemy.radius, enemy.y - enemy.radius - 8, enemy.radius * 2, 3);
+                ctx.fillStyle = '#00ff00';
+                ctx.fillRect(enemy.x - enemy.radius, enemy.y - enemy.radius - 8, enemy.radius * 2 * (enemy.hp / enemy.maxHp), 3);
+            });
+        }
+
+        function drawBullets() {
+            ctx.fillStyle = '#ffff00';
+            bullets.forEach(bullet => {
+                ctx.beginPath();
+                ctx.arc(bullet.x, bullet.y, bullet.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        function drawParticles() {
+            particles.forEach(p => {
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life / 30;
+                ctx.fillRect(p.x, p.y, 3, 3);
+            });
+            ctx.globalAlpha = 1;
+        }
+
+        function updateHUD() {
+            document.getElementById('hp').textContent = Math.max(0, player.hp);
+            document.getElementById('money').textContent = player.money;
+            document.getElementById('kills').textContent = player.kills;
+            document.getElementById('weaponName').textContent = weapons[currentWeapon].name;
+            document.getElementById('ammo').textContent = weapons[currentWeapon].ammo;
+            document.getElementById('reserve').textContent = weapons[currentWeapon].reserve === Infinity ? '∞' : weapons[currentWeapon].reserve;
+            document.getElementById('enemiesLeft').textContent = Math.max(0, enemiesInWave - enemiesKilled);
+        }
+
+        function gameOver() {
+            gameRunning = false;
+            document.getElementById('finalWave').textContent = wave;
+            document.getElementById('finalKills').textContent = player.kills;
+            document.getElementById('gameOver').style.display = 'block';
+        }
+
+        function gameLoop() {
+            if (!gameRunning) return;
+
+            ctx.fillStyle = '#2a2a2a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            updatePlayer();
+            updateEnemies();
+            updateBullets();
+            updateParticles();
+
+            drawParticles();
+            drawBullets();
+            drawEnemies();
+            drawPlayer();
+
+            updateHUD();
+            requestAnimationFrame(gameLoop);
+        }
+
+        startWave();
+        gameLoop();
+    </script>
+</body>
+</html>
