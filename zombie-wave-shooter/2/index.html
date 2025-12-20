@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zombie Wave Shooter</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: white;
+            overflow: hidden;
+        }
+        #gameCanvas {
+            border: 3px solid #ff0000;
+            background: #2a2a2a;
+            cursor: crosshair;
+        }
+        .hud {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            font-size: 20px;
+            text-shadow: 2px 2px 4px black;
+            z-index: 10;
+        }
+        .hud-item {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            background: rgba(0,0,0,0.7);
+            border-left: 4px solid #ff0000;
+        }
+        .wave {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px black;
+            background: rgba(0,0,0,0.7);
+            padding: 10px 20px;
+            border: 2px solid #ff0000;
+        }
+        .weapon-hud {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+        }
+        .weapon-slot {
+            background: rgba(0,0,0,0.8);
+            border: 3px solid #555;
+            padding: 15px;
+            min-width: 120px;
+            text-align: center;
+            font-size: 14px;
+        }
+        .weapon-slot.active {
+            border-color: #ff0000;
+            background: rgba(255,0,0,0.2);
+        }
+        .weapon-slot.locked {
+            opacity: 0.5;
+        }
+        .weapon-slot .weapon-key {
+            background: #ff0000;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        .weapon-slot .weapon-name {
+            font-weight: bold;
+            margin: 5px 0;
+            font-size: 16px;
+        }
+        .weapon-slot .weapon-ammo {
+            font-size: 20px;
+            font-weight: bold;
+            color: #00ff00;
+            margin: 5px 0;
+        }
+        .weapon-slot .weapon-ammo.low {
+            color: #ff0000;
+        }
+        .weapon-slot .weapon-reserve {
+            font-size: 12px;
+            color: #aaa;
+        }
+        .game-over, .wave-clear {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.95);
+            padding: 40px 60px;
+            border: 4px solid #ff0000;
+            text-align: center;
+            display: none;
+            z-index: 100;
+            max-width: 600px;
+        }
+        .game-over h1 {
+            font-size: 48px;
+            color: #ff0000;
+            margin-bottom: 20px;
+        }
+        .wave-clear h2 {
+            font-size: 40px;
+            color: #00ff00;
+            margin-bottom: 20px;
+        }
+        .shop {
+            margin-top: 20px;
+        }
+        .shop-item {
+            background: rgba(50,50,50,0.9);
+            border: 2px solid #666;
+            padding: 15px;
+            margin: 10px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            text-align: left;
+        }
+        .shop-item-info {
+            flex: 1;
+        }
+        .shop-item-name {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .shop-item-desc {
+            font-size: 14px;
+            color: #aaa;
+        }
+        button {
+            background: #ff0000;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 18px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #cc0000;
+        }
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+        .instructions {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            font-size: 14px;
+            text-align: right;
+        }
+        .money-display {
+            font-size: 24px;
+            color: #00ff00;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="1200" height="700"></canvas>
+    
+    <div class="hud">
+        <div class="hud-item">HP: <span id="hp">100</span></div>
+        <div class="hud-item">お金: $<span id="money">0</span></div>
+        <div class="hud-item">キル数: <span id="kills">0</span></div>
+    </div>
+    
+    <div class="wave">
+        Wave <span id="wave">1</span><br>
+        敵: <span id="enemiesLeft">0</span>
+    </div>
+    
+    <div class="weapon-hud" id="weaponHud"></div>
+    
+    <div class="instructions">
+        WASD: 移動 | マウス: 照準/射撃 | R: リロード | 1-4: 武器切替
+    </div>
+    
+    <div class="game-over" id="gameOver">
+        <h1>GAME OVER</h1>
+        <p>Wave: <span id="finalWave"></span></p>
+        <p>キル数: <span id="finalKills"></span></p>
+        <button onclick="location.reload()">もう一度プレイ</button>
+    </div>
+    
+    <div class="wave-clear" id="waveClear">
+        <h2>WAVE CLEAR!</h2>
+        <p id="waveReward"></p>
+        <div class="money-display">所持金: $<span id="shopMoney">0</span></div>
+        <div class="shop" id="shop"></div>
+        <button onclick="nextWave()">次のWaveへ</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const player = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            radius: 15,
+            speed: 4,
+            hp: 100,
+            maxHp: 100,
+            angle: 0,
+            money: 0,
+            kills: 0
+        };
+
+        const weapons = {
+            pistol: { 
+                name: 'Pistol', 
+                damage: 25, 
+                fireRate: 300, 
+                ammo: 15, 
+                maxAmmo: 15, 
+                reserve: Infinity, 
+                reloadTime: 1000, 
+                owned: true,
+                auto: false
+            },
+            shotgun: { 
+                name: 'Shotgun', 
+                damage: 20, 
+                fireRate: 800, 
+                ammo: 8, 
+                maxAmmo: 8, 
+                reserve: 40, 
+                reloadTime: 1500, 
+                pellets: 6, 
+                cost: 200,
+                owned: false,
+                auto: false
+            },
+            smg: { 
+                name: 'SMG', 
+                damage: 18, 
+                fireRate: 100, 
+                ammo: 40, 
+                maxAmmo: 40, 
+                reserve: 200, 
+                reloadTime: 1500, 
+                cost: 350,
+                owned: false,
+                auto: true
+            },
+            rifle: { 
+                name: 'Rifle', 
+                damage: 35, 
+                fireRate: 150, 
+                ammo: 30, 
+                maxAmmo: 30, 
+                reserve: 120, 
+                reloadTime: 1800, 
+                cost: 500,
+                owned: false,
+                auto: false
+            }
+        };
+
+        const shopItems = [
+            { type: 'weapon', id: 'shotgun', name: 'Shotgun', desc: '近距離で複数の敵を撃つ', cost: 200 },
+            { type: 'weapon', id: 'smg', name: 'SMG', desc: '高速連射で敵を制圧', cost: 350 },
+            { type: 'weapon', id: 'rifle', name: 'Rifle', desc: '高威力の正確な射撃', cost: 500 },
+            { type: 'ammo', id: 'shotgun', name: 'Shotgun 弾薬', desc: '弾薬 +40発', cost: 50 },
+            { type: 'ammo', id: 'smg', name: 'SMG 弾薬', desc: '弾薬 +200発', cost: 75 },
+            { type: 'ammo', id: 'rifle', name: 'Rifle 弾薬', desc: '弾薬 +120発', cost: 100 },
+            { type: 'heal', name: 'メディキット', desc: 'HP +50回復', cost: 100 },
+            { type: 'upgrade', id: 'maxhp', name: 'アーマー強化', desc: '最大HP +20', cost: 150 }
+        ];
+
+        let currentWeapon = 'pistol';
+        let canShoot = true;
+        let isReloading = false;
+        let mouseDown = false;
+
+        const keys = {};
+        const enemies = [];
+        const bullets = [];
+        const particles = [];
+        
+        let wave = 0;
+        let enemiesInWave = 0;
+        let enemiesKilled = 0;
+        let gameRunning = true;
+        let waveActive = false;
+
+        const mousePos = { x: 0, y: 0 };
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mousePos.x = e.clientX - rect.left;
+            mousePos.y = e.clientY - rect.top;
+            player.angle = Math.atan2(mousePos.y - player.y, mousePos.x - player.x);
+        });
+
+        canvas.addEventListener('mousedown', () => {
+            mouseDown = true;
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            mouseDown = false;
+        });
+
+        document.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+            if (e.key.toLowerCase() === 'r') reload();
+            if (e.key === '1') switchWeapon('pistol');
+            if (e.key === '2') switchWeapon('shotgun');
+            if (e.key === '3') switchWeapon('smg');
+            if (e.key === '4') switchWeapon('rifle');
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+        });
+
+        function switchWeapon(weaponName) {
+            if (weapons[weaponName].owned) {
+                currentWeapon = weaponName;
+                updateWeaponHUD();
+            }
+        }
+
+        function shoot() {
+            const weapon = weapons[currentWeapon];
+            if (!canShoot || weapon.ammo <= 0 || isReloading) return;
+
+            if (weapon.pellets) {
+                for (let i = 0; i < weapon.pellets; i++) {
+                    const spread = (Math.random() - 0.5) * 0.3;
+                    bullets.push({
+                        x: player.x,
+                        y: player.y,
+                        angle: player.angle + spread,
+                        speed: 12,
+                        damage: weapon.damage,
+                        radius: 3
+                    });
+                }
+            } else {
+                bullets.push({
+                    x: player.x,
+                    y: player.y,
+                    angle: player.angle,
+                    speed: 15,
+                    damage: weapon.damage,
+                    radius: 4
+                });
+            }
+
+            weapon.ammo--;
+            canShoot = false;
+            setTimeout(() => canShoot = true, weapon.fireRate);
+            updateWeaponHUD();
+        }
+
+        function reload() {
+            const weapon = weapons[currentWeapon];
+            if (isReloading || weapon.ammo === weapon.maxAmmo || weapon.reserve === 0) return;
+
+            isReloading = true;
+            setTimeout(() => {
+                const needed = weapon.maxAmmo - weapon.ammo;
+                const available = weapon.reserve === Infinity ? needed : Math.min(needed, weapon.reserve);
+                weapon.ammo += available;
+                if (weapon.reserve !== Infinity) weapon.reserve -= available;
+                isReloading = false;
+                updateWeaponHUD();
+            }, weapon.reloadTime);
+        }
+
+        function spawnEnemy() {
+            const side = Math.floor(Math.random() * 4);
+            let x, y;
+            
+            if (side === 0) { x = Math.random() * canvas.width; y = -20; }
+            else if (side === 1) { x = canvas.width + 20; y = Math.random() * canvas.height; }
+            else if (side === 2) { x = Math.random() * canvas.width; y = canvas.height + 20; }
+            else { x = -20; y = Math.random() * canvas.height; }
+
+            const types = ['normal', 'fast', 'tank'];
+            const weights = [70, 20, 10];
+            const rand = Math.random() * 100;
+            let type = 'normal';
+            let sum = 0;
+            for (let i = 0; i < types.length; i++) {
+                sum += weights[i];
+                if (rand < sum) {
+                    type = types[i];
+                    break;
+                }
+            }
+
+            const enemyStats = {
+                normal: { hp: 50 + wave * 10, speed: 1.5 + wave * 0.1, radius: 12, color: '#00ff00', reward: 25 },
+                fast: { hp: 30 + wave * 5, speed: 3 + wave * 0.15, radius: 10, color: '#ffff00', reward: 35 },
+                tank: { hp: 150 + wave * 30, speed: 0.8 + wave * 0.05, radius: 18, color: '#ff00ff', reward: 60 }
+            };
+
+            const stats = enemyStats[type];
+            enemies.push({
+                x, y,
+                type,
+                hp: stats.hp,
+                maxHp: stats.hp,
+                speed: stats.speed,
+                radius: stats.radius,
+                color: stats.color,
+                reward: stats.reward
+            });
+        }
+
+        function startWave() {
+            wave++;
+            enemiesInWave = 5 + wave * 3;
+            enemiesKilled = 0;
+            waveActive = true;
+            document.getElementById('wave').textContent = wave;
+            
+            for (let i = 0; i < Math.min(enemiesInWave, 10); i++) {
+                setTimeout(() => spawnEnemy(), i * 500);
+            }
+        }
+
+        function buyItem(item) {
+            if (player.money < item.cost) return;
+
+            if (item.type === 'weapon') {
+                if (weapons[item.id].owned) return;
+                player.money -= item.cost;
+                weapons[item.id].owned = true;
+            } else if (item.type === 'ammo') {
+                if (!weapons[item.id].owned) return;
+                player.money -= item.cost;
+                if (item.id === 'shotgun') weapons[item.id].reserve += 40;
+                if (item.id === 'smg') weapons[item.id].reserve += 200;
+                if (item.id === 'rifle') weapons[item.id].reserve += 120;
+            } else if (item.type === 'heal') {
+                player.money -= item.cost;
+                player.hp = Math.min(player.maxHp, player.hp + 50);
+            } else if (item.type === 'upgrade' && item.id === 'maxhp') {
+                player.money -= item.cost;
+                player.maxHp += 20;
+                player.hp = Math.min(player.maxHp, player.hp + 20);
+            }
+
+            updateShop();
+            updateHUD();
+        }
+
+        function updateShop() {
+            const shopContainer = document.getElementById('shop');
+            shopContainer.innerHTML = '';
+            document.getElementById('shopMoney').textContent = player.money;
+
+            shopItems.forEach(item => {
+                const canBuy = player.money >= item.cost;
+                const isOwned = item.type === 'weapon' && weapons[item.id].owned;
+                const needsWeapon = item.type === 'ammo' && !weapons[item.id].owned;
+
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'shop-item';
+                itemDiv.innerHTML = `
+                    <div class="shop-item-info">
+                        <div class="shop-item-name">${item.name} ${isOwned ? '(所有済)' : ''}</div>
+                        <div class="shop-item-desc">${item.desc}</div>
+                    </div>
+                    <button ${!canBuy || isOwned || needsWeapon ? 'disabled' : ''}>
+                        $${item.cost}
+                    </button>
+                `;
+
+                const button = itemDiv.querySelector('button');
+                button.onclick = () => buyItem(item);
+
+                shopContainer.appendChild(itemDiv);
+            });
+        }
+
+        function nextWave() {
+            document.getElementById('waveClear').style.display = 'none';
+            startWave();
+        }
+
+        function updatePlayer() {
+            let dx = 0, dy = 0;
+            if (keys['w'] || keys['arrowup']) dy -= 1;
+            if (keys['s'] || keys['arrowdown']) dy += 1;
+            if (keys['a'] || keys['arrowleft']) dx -= 1;
+            if (keys['d'] || keys['arrowright']) dx += 1;
+
+            if (dx !== 0 || dy !== 0) {
+                const length = Math.sqrt(dx * dx + dy * dy);
+                dx /= length;
+                dy /= length;
+                player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x + dx * player.speed));
+                player.y = Math.max(player.radius, Math.min(canvas.height - player.radius, player.y + dy * player.speed));
+            }
+
+            if (mouseDown && weapons[currentWeapon].auto) {
+                shoot();
+            } else if (mouseDown && !weapons[currentWeapon].auto && canShoot) {
+                shoot();
+            }
+        }
+
+        function updateEnemies() {
+            if (waveActive && enemies.length < 15 && enemiesKilled + enemies.length < enemiesInWave) {
+                if (Math.random() < 0.02) spawnEnemy();
+            }
+
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const enemy = enemies[i];
+                const dx = player.x - enemy.x;
+                const dy = player.y - enemy.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                enemy.x += (dx / dist) * enemy.speed;
+                enemy.y += (dy / dist) * enemy.speed;
+
+                if (dist < player.radius + enemy.radius) {
+                    player.hp -= 10;
+                    enemies.splice(i, 1);
+                    if (player.hp <= 0) gameOver();
+                }
+            }
+        }
+
+        function updateBullets() {
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const bullet = bullets[i];
+                bullet.x += Math.cos(bullet.angle) * bullet.speed;
+                bullet.y += Math.sin(bullet.angle) * bullet.speed;
+
+                if (bullet.x < 0 || bullet.x > canvas.width || bullet.y < 0 || bullet.y > canvas.height) {
+                    bullets.splice(i, 1);
+                    continue;
+                }
+
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    const enemy = enemies[j];
+                    const dx = bullet.x - enemy.x;
+                    const dy = bullet.y - enemy.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < enemy.radius + bullet.radius) {
+                        enemy.hp -= bullet.damage;
+                        bullets.splice(i, 1);
+
+                        for (let k = 0; k < 5; k++) {
+                            particles.push({
+                                x: enemy.x,
+                                y: enemy.y,
+                                vx: (Math.random() - 0.5) * 4,
+                                vy: (Math.random() - 0.5) * 4,
+                                life: 30,
+                                color: enemy.color
+                            });
+                        }
+
+                        if (enemy.hp <= 0) {
+                            player.money += enemy.reward;
+                            player.kills++;
+                            enemiesKilled++;
+                            enemies.splice(j, 1);
+
+                            if (waveActive && enemiesKilled >= enemiesInWave) {
+                                waveActive = false;
+                                const reward = wave * 100;
+                                player.money += reward;
+                                document.getElementById('waveReward').textContent = `ボーナス: $${reward}`;
+                                updateShop();
+                                document.getElementById('waveClear').style.display = 'block';
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life--;
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+        }
+
+        function drawPlayer() {
+            ctx.fillStyle = '#0088ff';
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(player.x, player.y);
+            ctx.lineTo(
+                player.x + Math.cos(player.angle) * (player.radius + 10),
+                player.y + Math.sin(player.angle) * (player.radius + 10)
+            );
+            ctx.stroke();
+
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(player.x - 20, player.y - 25, 40, 4);
+            ctx.fillStyle = '#00ff00';
+            ctx.fillRect(player.x - 20, player.y - 25, 40 * (player.hp / player.maxHp), 4);
+        }
+
+        function drawEnemies() {
+            enemies.forEach(enemy => {
+                ctx.fillStyle = enemy.color;
+                ctx.beginPath();
+                ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#ff0000';
+                ctx.fillRect(enemy.x - enemy.radius, enemy.y - enemy.radius - 8, enemy.radius * 2, 3);
+                ctx.fillStyle = '#00ff00';
+                ctx.fillRect(enemy.x - enemy.radius, enemy.y - enemy.radius - 8, enemy.radius * 2 * (enemy.hp / enemy.maxHp), 3);
+            });
+        }
+
+        function drawBullets() {
+            ctx.fillStyle = '#ffff00';
+            bullets.forEach(bullet => {
+                ctx.beginPath();
+                ctx.arc(bullet.x, bullet.y, bullet.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        function drawParticles() {
+            particles.forEach(p => {
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life / 30;
+                ctx.fillRect(p.x, p.y, 3, 3);
+            });
+            ctx.globalAlpha = 1;
+        }
+
+        function updateWeaponHUD() {
+            const weaponHudContainer = document.getElementById('weaponHud');
+            weaponHudContainer.innerHTML = '';
+
+            const weaponKeys = ['pistol', 'shotgun', 'smg', 'rifle'];
+            const keyNumbers = ['1', '2', '3', '4'];
+
+            weaponKeys.forEach((weaponKey, index) => {
+                const weapon = weapons[weaponKey];
+                const isActive = currentWeapon === weaponKey;
+                const isLocked = !weapon.owned;
+
+                const slotDiv = document.createElement('div');
+                slotDiv.className = `weapon-slot ${isActive ? 'active' : ''} ${isLocked ? 'locked' : ''}`;
+                
+                const ammoClass = weapon.ammo <= weapon.maxAmmo * 0.3 ? 'low' : '';
+                const ammoDisplay = weapon.ammo;
+                const reserveDisplay = weapon.reserve === Infinity ? '∞' : weapon.reserve;
+
+                slotDiv.innerHTML = `
+                    <div class="weapon-key">${keyNumbers[index]}</div>
+                    <div class="weapon-name">${weapon.name}</div>
+                    ${!isLocked ? `
+                        <div class="weapon-ammo ${ammoClass}">${ammoDisplay}</div>
+                        <div class="weapon-reserve">${reserveDisplay}</div>
+                    ` : '<div style="color:#888">未所有</div>'}
+                `;
+
+                weaponHudContainer.appendChild(slotDiv);
+            });
+        }
+
+        function updateHUD() {
+            document.getElementById('hp').textContent = Math.max(0, player.hp);
+            document.getElementById('money').textContent = player.money;
+            document.getElementById('kills').textContent = player.kills;
+            document.getElementById('enemiesLeft').textContent = Math.max(0, enemiesInWave - enemiesKilled);
+        }
+
+        function gameOver() {
+            gameRunning = false;
+            document.getElementById('finalWave').textContent = wave;
+            document.getElementById('finalKills').textContent = player.kills;
+            document.getElementById('gameOver').style.display = 'block';
+        }
+
+        function gameLoop() {
+            if (!gameRunning) return;
+
+            ctx.fillStyle = '#2a2a2a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            updatePlayer();
+            updateEnemies();
+            updateBullets();
+            updateParticles();
+
+            drawParticles();
+            drawBullets();
+            drawEnemies();
+            drawPlayer();
+
+            updateHUD();
+            requestAnimationFrame(gameLoop);
+        }
+
+        updateWeaponHUD();
+        startWave();
+        gameLoop();
+    </script>
+</body>
+</html>
